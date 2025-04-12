@@ -1,0 +1,15 @@
+!**/HELP.md
+!**/target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+/acquisition-api/target/
+/acquisition-client/target/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
