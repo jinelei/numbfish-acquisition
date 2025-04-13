@@ -22,10 +22,6 @@ public class AcquisitionProperty {
     protected Influx2Property influx2;
     @NotNull(message = "别名配置不合法")
     protected AliasProperty alias;
-    @NotNull(message = "安全配置不合法")
-    protected SecurityProperty security;
-    @NotNull(message = "缓存配置不合法")
-    protected CacheProperty cache;
 
     public MqttProperty getMqtt() {
         return mqtt;
@@ -51,32 +47,16 @@ public class AcquisitionProperty {
         this.alias = alias;
     }
 
-    public SecurityProperty getSecurity() {
-        return security;
-    }
-
-    public void setSecurity(SecurityProperty security) {
-        this.security = security;
-    }
-
-    public CacheProperty getCache() {
-        return cache;
-    }
-
-    public void setCache(CacheProperty cache) {
-        this.cache = cache;
-    }
-
     @Override
-    public boolean equals(Object object) {
-        if (object == null || getClass() != object.getClass()) return false;
-        AcquisitionProperty that = (AcquisitionProperty) object;
-        return Objects.equals(mqtt, that.mqtt) && Objects.equals(influx2, that.influx2) && Objects.equals(alias, that.alias) && Objects.equals(security, that.security) && Objects.equals(cache, that.cache);
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        AcquisitionProperty that = (AcquisitionProperty) o;
+        return Objects.equals(mqtt, that.mqtt) && Objects.equals(influx2, that.influx2) && Objects.equals(alias, that.alias);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mqtt, influx2, alias, security, cache);
+        return Objects.hash(mqtt, influx2, alias);
     }
 
     @Override
@@ -85,8 +65,6 @@ public class AcquisitionProperty {
                 "mqtt=" + mqtt +
                 ", influx2=" + influx2 +
                 ", alias=" + alias +
-                ", security=" + security +
-                ", cache=" + cache +
                 '}';
     }
 }

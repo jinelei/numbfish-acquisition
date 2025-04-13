@@ -28,8 +28,9 @@ public class TopicProperty {
      * qos
      */
     @NotNull(message = "不合法")
-    protected @Max(2)
-    @Min(0) Integer qos;
+    @Max(value = 2, message = "不能大于2")
+    @Min(value = 0, message = "不能小于0")
+    protected Integer qos;
 
     public Boolean getEnabled() {
         return enabled;
