@@ -8,6 +8,7 @@ import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameterMessag
 import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceStateMessage;
 import com.jinelei.numbfish.acquisition.client.property.AcquisitionProperty;
 import com.jinelei.numbfish.common.exception.InvalidArgsException;
+import com.jinelei.numbfish.common.helper.EnumerationHelper;
 import com.jinelei.numbfish.device.enumeration.EventType;
 import com.jinelei.numbfish.device.enumeration.RunningState;
 import org.slf4j.Logger;
@@ -66,7 +67,7 @@ public class MixinSplitter extends AbstractMessageSplitter {
                         .filter(JsonNode::isTextual)
                         .map(JsonNode::asText)
                         .filter(StringUtils::hasLength)
-                        .map(EventType::parseFrom)
+                        .map(i -> EnumerationHelper.parseFrom(EventType.class, i))
                         .ifPresent(value -> {
                             final DeviceConnectMessage deviceConnectMessage = new DeviceConnectMessage();
                             deviceConnectMessage.setDeviceCode(deviceCode);
@@ -76,10 +77,12 @@ public class MixinSplitter extends AbstractMessageSplitter {
                         });
                 Optional.ofNullable(node.get(property.getAlias().getState()))
                         .map(n -> switch (n.getNodeType()) {
-                            case NUMBER -> Optional.of(n.asInt()).map(RunningState::parseFrom)
-                                    .orElseThrow(() -> new InvalidArgsException("运行状态不合法"));
-                            case STRING -> Optional.of(n.asText()).map(RunningState::parseFrom)
-                                    .orElseThrow(() -> new InvalidArgsException("运行状态不合法"));
+                            case NUMBER ->
+                                    Optional.of(n.asInt()).map(i -> EnumerationHelper.parseFrom(RunningState.class, i))
+                                            .orElseThrow(() -> new InvalidArgsException("运行状态不合法"));
+                            case STRING ->
+                                    Optional.of(n.asText()).map(i -> EnumerationHelper.parseFrom(RunningState.class, i))
+                                            .orElseThrow(() -> new InvalidArgsException("运行状态不合法"));
                             case MISSING, NULL, POJO, ARRAY, BINARY, OBJECT, BOOLEAN ->
                                     throw new InvalidArgsException("运行状态不支持的类型");
                         }).ifPresent(value -> {
