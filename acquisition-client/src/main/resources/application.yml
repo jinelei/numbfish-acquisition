@@ -92,19 +92,19 @@ numbfish:
       topics:
         mixin:
           enabled: true
-          name: /dev/mixin
+          name: /dev/mixin/dev
           qos: 1
         state:
           enabled: true
-          name: /dev/state
+          name: /dev/state/dev
           qos: 1
         parameter:
           enabled: true
-          name: /dev/msg
+          name: /dev/msg/dev
           qos: 1
         connect:
           enabled: true
-          name: /dev/conn
+          name: /dev/conn/dev
           qos: 1
     influx2:
       enabled: true
