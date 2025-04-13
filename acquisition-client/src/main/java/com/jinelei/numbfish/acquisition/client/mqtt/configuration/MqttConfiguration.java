@@ -1,15 +1,31 @@
 package com.jinelei.numbfish.acquisition.client.mqtt.configuration;
 
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnect;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameter;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceState;
 import com.jinelei.numbfish.acquisition.client.mqtt.handler.ExceptionHandler;
-import com.jinelei.numbfish.acquisition.client.mqtt.service.MqttService;
+import com.jinelei.numbfish.acquisition.client.mqtt.splitter.MixinSplitter;
+import com.jinelei.numbfish.acquisition.client.property.AcquisitionProperty;
+import com.jinelei.numbfish.acquisition.client.property.MqttProperty;
+import com.jinelei.numbfish.acquisition.client.property.TopicProperty;
+import com.jinelei.numbfish.acquisition.client.service.*;
+import com.jinelei.numbfish.common.exception.InvalidArgsException;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.context.IntegrationContextUtils;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.StandardIntegrationFlow;
+import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
+import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
+import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
+import org.springframework.messaging.Message;
+
+import java.util.Optional;
 
 /**
  * @Author: jinelei
@@ -17,22 +33,101 @@ import org.springframework.integration.dsl.StandardIntegrationFlow;
  * @Date: 2023/02/09
  * @Version: 1.0.0
  */
+@SuppressWarnings("unused")
 @Configuration
-@ConditionalOnBean(MqttService.class)
+@ConditionalOnProperty(name = "numbfish.acquisition.enabled", havingValue = "true")
 public class MqttConfiguration {
     private static final Logger log = LoggerFactory.getLogger(MqttConfiguration.class);
-    private final MqttService mqttService;
+    private final AcquisitionProperty property;
     private final ExceptionHandler exceptionHandler;
 
-    public MqttConfiguration(MqttService mqttService, ExceptionHandler exceptionHandler) {
-        this.mqttService = mqttService;
+    public MqttConfiguration(AcquisitionProperty property, ExceptionHandler exceptionHandler) {
+        this.property = property;
         this.exceptionHandler = exceptionHandler;
     }
 
     @Bean
-    public StandardIntegrationFlow standardIntegrationFlow() {
+    public StandardIntegrationFlow standardIntegrationFlow(
+            @Autowired(required = false) MixinSplitter mixinSplitter,
+            @Autowired(required = false) DeviceActivateStateHandler deviceActivateStateHandler,
+            @Autowired(required = false) DeviceConnectionHandler deviceConnectionHandler,
+            @Autowired(required = false) DeviceAlarmUpdateHandler deviceAlarmUpdateHandler,
+            @Autowired(required = false) DeviceProduceUpdateHandler deviceProduceUpdateHandler,
+            @Autowired(required = false) DeviceParameterHandler deviceParameterHandler,
+            @Autowired(required = false) DeviceStateSaveHandler deviceStateSaveHandler
+    ) {
         log.info("MqttConfiguration register standardIntegrationFlow");
-        return mqttService.getStandardIntegrationFlow();
+        final MqttConnectOptions options = new MqttConnectOptions();
+        options.setServerURIs(new String[]{Optional.ofNullable(this.property.getMqtt().getUrl())
+                .orElseThrow(() -> new RuntimeException("mqtt url is null"))});
+        options.setUserName(Optional.ofNullable(this.property.getMqtt().getUsername())
+                .orElseThrow(() -> new RuntimeException("mqtt username is null")));
+        options.setPassword(Optional.ofNullable(this.property.getMqtt().getPassword())
+                .orElseThrow(() -> new RuntimeException("mqtt password is null"))
+                .toCharArray());
+        options.setCleanSession(true);
+        options.setKeepAliveInterval(60);
+        options.setAutomaticReconnect(true);
+        options.setConnectionTimeout(60);
+        options.setExecutorServiceTimeout(60);
+        final DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
+        factory.setConnectionOptions(options);
+        final MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(this.property.getMqtt().getClientId(), factory);
+        adapter.setCompletionTimeout(60_000);
+        adapter.setSendTimeout(60_000);
+        adapter.setDisconnectCompletionTimeout(30_000);
+        adapter.setConverter(new DefaultPahoMessageConverter());
+        adapter.setQos(1);
+        Optional.of(this.property)
+                .map(AcquisitionProperty::getMqtt)
+                .map(MqttProperty::getTopics)
+                .ifPresent(topicsProps -> {
+                    Optional.ofNullable(topicsProps.getConnect())
+                            .filter(TopicProperty::getEnabled)
+                            .ifPresent(topic -> adapter.addTopic(topic.getName(),
+                                    topic.getQos()));
+                    Optional.ofNullable(topicsProps.getState())
+                            .filter(TopicProperty::getEnabled)
+                            .ifPresent(topic -> adapter.addTopic(topic.getName(),
+                                    topic.getQos()));
+                    Optional.ofNullable(topicsProps.getParameter())
+                            .filter(TopicProperty::getEnabled)
+                            .ifPresent(topic -> adapter.addTopic(topic.getName(),
+                                    topic.getQos()));
+                    Optional.ofNullable(topicsProps.getMixin())
+                            .filter(TopicProperty::getEnabled)
+                            .ifPresent(topic -> adapter.addTopic(topic.getName(),
+                                    topic.getQos()));
+                });
+        return IntegrationFlow.from(adapter)
+                .split(Optional.ofNullable(mixinSplitter).orElseThrow(() -> new InvalidArgsException("消息分割器未配置")))
+                .route(
+                        Message.class,
+                        message -> message.getPayload().getClass().getSimpleName(),
+                        spec -> spec
+                                .subFlowMapping(DeviceConnect.class.getSimpleName(),
+                                        definition -> definition
+                                                .wireTap(it -> Optional.ofNullable(deviceActivateStateHandler)
+                                                        .ifPresent(it::handle))
+                                                .wireTap(it -> Optional.ofNullable(deviceConnectionHandler)
+                                                        .ifPresent(it::handle))
+                                                .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))
+                                .subFlowMapping(DeviceState.class.getSimpleName(),
+                                        definition -> definition
+                                                .wireTap(it -> Optional.ofNullable(deviceStateSaveHandler)
+                                                        .ifPresent(it::handle))
+                                                .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))
+                                .subFlowMapping(DeviceParameter.class.getSimpleName(),
+                                        definition -> definition
+                                                .wireTap(it -> Optional.ofNullable(deviceParameterHandler)
+                                                        .ifPresent(it::handle))
+                                                .wireTap(it -> Optional.ofNullable(deviceAlarmUpdateHandler)
+                                                        .ifPresent(it::handle))
+                                                .wireTap(it -> Optional.ofNullable(deviceProduceUpdateHandler)
+                                                        .ifPresent(it::handle))
+                                                .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))
+                                .defaultOutputToParentFlow())
+                .get();
     }
 
     /**

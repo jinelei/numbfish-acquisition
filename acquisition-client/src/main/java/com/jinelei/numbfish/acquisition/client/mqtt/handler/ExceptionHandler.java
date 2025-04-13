@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
  * @Date: 2023/08/18
  * @Version: 1.0.0
  */
+@SuppressWarnings("unused")
 @Component
 public class ExceptionHandler implements MessageHandler {
     private static final Logger log = LoggerFactory.getLogger(ExceptionHandler.class);

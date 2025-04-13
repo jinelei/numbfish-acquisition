@@ -10,7 +10,6 @@
         <version>0.0.1</version>
     </parent>
 
-    <groupId>com.jinelei.numbfish</groupId>
     <artifactId>acquisition-client</artifactId>
     <version>0.0.1</version>
     <description>numbfish acquisition client module</description>
@@ -55,6 +54,12 @@
             <groupId>com.jinelei.numbfish</groupId>
             <artifactId>common</artifactId>
             <version>${numbfish-common.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.jinelei.numbfish</groupId>
+            <artifactId>device-api</artifactId>
+            <version>${numbfish-device-api.version}</version>
         </dependency>
 
         <dependency>

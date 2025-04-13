@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.2</version>
-        <relativePath />
+        <relativePath/>
     </parent>
 
     <groupId>com.jinelei.numbfish</groupId>
@@ -54,6 +54,7 @@
         <springfox-swagger2.version>3.0.0</springfox-swagger2.version>
         <numbfish-common.version>0.0.1</numbfish-common.version>
         <numbfish-auth-api.version>0.0.1</numbfish-auth-api.version>
+        <numbfish-device-api.version>0.0.1</numbfish-device-api.version>
         <springboot-maven-plugin.version>3.4.3</springboot-maven-plugin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <jakarta.validation-api.version>3.1.1</jakarta.validation-api.version>
