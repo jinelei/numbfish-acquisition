@@ -1,7 +1,7 @@
 package com.jinelei.numbfish.acquisition.client.service;
 
 import com.jinelei.numbfish.acquisition.client.influx.InfluxService;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnectMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceActivateMessage;
 import com.jinelei.numbfish.common.exception.InternalException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -21,24 +21,24 @@ import java.util.Optional;
  * @Version: 1.0.0
  */
 @Component
-public class DeviceConnectionHandler implements MessageHandler, InitializingBean {
-    private static final Logger log = LoggerFactory.getLogger(DeviceConnectionHandler.class);
+public class DeviceActivateHandler implements MessageHandler, InitializingBean {
+    private static final Logger log = LoggerFactory.getLogger(DeviceActivateHandler.class);
 
     private final InfluxService influxService;
 
-    public DeviceConnectionHandler(InfluxService influxService) {
+    public DeviceActivateHandler(InfluxService influxService) {
         this.influxService = influxService;
     }
 
     @Override
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
-            if (message.getPayload() instanceof DeviceConnectMessage dc) {
-                influxService.savePoints(dc);
-                log.info("saveDeviceConnect success: {}", dc);
+            if (message.getPayload() instanceof DeviceActivateMessage da) {
+                influxService.savePoints(da);
+                log.debug("updateDeviceActiveState success: {}", da);
             }
         } catch (Throwable throwable) {
-            log.error("saveDeviceConnect failure: {}", throwable.getMessage());
+            log.error("updateDeviceActiveState failure: {}", throwable.getMessage());
         }
     }
 

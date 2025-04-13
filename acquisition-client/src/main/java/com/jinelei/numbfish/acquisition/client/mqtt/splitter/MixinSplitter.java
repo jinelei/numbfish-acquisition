@@ -3,9 +3,9 @@ package com.jinelei.numbfish.acquisition.client.mqtt.splitter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnect;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameter;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceState;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnectMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameterMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceStateMessage;
 import com.jinelei.numbfish.acquisition.client.property.AcquisitionProperty;
 import com.jinelei.numbfish.common.exception.InvalidArgsException;
 import com.jinelei.numbfish.device.enumeration.EventType;
@@ -68,11 +68,11 @@ public class MixinSplitter extends AbstractMessageSplitter {
                         .filter(StringUtils::hasLength)
                         .map(EventType::parseFrom)
                         .ifPresent(value -> {
-                            final DeviceConnect deviceConnect = new DeviceConnect();
-                            deviceConnect.setDeviceCode(deviceCode);
-                            deviceConnect.setTime(instant);
-                            deviceConnect.setEvent(value);
-                            result.add(deviceConnect);
+                            final DeviceConnectMessage deviceConnectMessage = new DeviceConnectMessage();
+                            deviceConnectMessage.setDeviceCode(deviceCode);
+                            deviceConnectMessage.setTime(instant);
+                            deviceConnectMessage.setEvent(value);
+                            result.add(deviceConnectMessage);
                         });
                 Optional.ofNullable(node.get(property.getAlias().getState()))
                         .map(n -> switch (n.getNodeType()) {
@@ -83,28 +83,28 @@ public class MixinSplitter extends AbstractMessageSplitter {
                             case MISSING, NULL, POJO, ARRAY, BINARY, OBJECT, BOOLEAN ->
                                     throw new InvalidArgsException("运行状态不支持的类型");
                         }).ifPresent(value -> {
-                            final DeviceState deviceState = new DeviceState();
-                            deviceState.setDeviceCode(deviceCode);
-                            deviceState.setTime(instant);
-                            deviceState.setState(value);
-                            deviceState.setDuration(0L);
-                            deviceState.setState(value);
-                            result.add(deviceState);
+                            final DeviceStateMessage deviceStateMessage = new DeviceStateMessage();
+                            deviceStateMessage.setDeviceCode(deviceCode);
+                            deviceStateMessage.setTime(instant);
+                            deviceStateMessage.setState(value);
+                            deviceStateMessage.setDuration(0L);
+                            deviceStateMessage.setState(value);
+                            result.add(deviceStateMessage);
                         });
                 node.fields().forEachRemaining(entry -> {
                     if (!fields.contains(entry.getKey())) {
                         Optional.ofNullable(entry.getValue()).map(JsonNode::getNodeType).ifPresent(type -> {
-                            Optional<DeviceParameter> optional = switch (type) {
+                            Optional<DeviceParameterMessage> optional = switch (type) {
                                 case NUMBER ->
-                                        Optional.of(new DeviceParameter(deviceCode, instant, entry.getKey(), entry.getValue().asLong()));
+                                        Optional.of(new DeviceParameterMessage(deviceCode, instant, entry.getKey(), entry.getValue().asLong()));
                                 case STRING ->
-                                        Optional.of(new DeviceParameter(deviceCode, instant, entry.getKey(), entry.getValue().asText()));
+                                        Optional.of(new DeviceParameterMessage(deviceCode, instant, entry.getKey(), entry.getValue().asText()));
                                 case BOOLEAN ->
-                                        Optional.of(new DeviceParameter(deviceCode, instant, entry.getKey(), entry.getValue().asBoolean()));
+                                        Optional.of(new DeviceParameterMessage(deviceCode, instant, entry.getKey(), entry.getValue().asBoolean()));
                                 case ARRAY ->
-                                        Optional.of(new DeviceParameter(deviceCode, instant, entry.getKey(), entry.getValue().toString()));
+                                        Optional.of(new DeviceParameterMessage(deviceCode, instant, entry.getKey(), entry.getValue().toString()));
                                 case OBJECT, POJO, BINARY -> Optional
-                                        .of(new DeviceParameter(deviceCode, instant, entry.getKey(), entry.getValue().toPrettyString()));
+                                        .of(new DeviceParameterMessage(deviceCode, instant, entry.getKey(), entry.getValue().toPrettyString()));
                                 case MISSING, NULL -> Optional.empty();
                             };
                             optional.ifPresent(result::add);

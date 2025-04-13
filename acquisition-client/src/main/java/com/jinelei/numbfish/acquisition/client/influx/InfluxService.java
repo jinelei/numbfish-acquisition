@@ -8,9 +8,9 @@ import com.influxdb.client.write.Point;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import com.jinelei.numbfish.acquisition.client.influx.bean.AbstractMessage;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameter;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceProduce;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceState;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameterMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceProduceMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceStateMessage;
 import com.jinelei.numbfish.acquisition.client.property.AcquisitionProperty;
 import com.jinelei.numbfish.common.exception.InvalidArgsException;
 import org.slf4j.Logger;
@@ -44,9 +44,9 @@ import java.util.stream.Stream;
 public class InfluxService implements DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(InfluxService.class);
     private AcquisitionProperty property;
-    private RedisTemplate<String, DeviceState> redisTemplateDeviceState;
-    private RedisTemplate<String, DeviceParameter> redisTemplateDeviceParameter;
-    private RedisTemplate<String, DeviceProduce> redisTemplateDeviceProduce;
+    private RedisTemplate<String, DeviceStateMessage> redisTemplateDeviceState;
+    private RedisTemplate<String, DeviceParameterMessage> redisTemplateDeviceParameter;
+    private RedisTemplate<String, DeviceProduceMessage> redisTemplateDeviceProduce;
     private final AtomicReference<InfluxDBClient> client = new AtomicReference<>();
     private final Function<Class<?>, String> getCacheKey = k -> {
         Class<?> componentType;
@@ -57,11 +57,11 @@ public class InfluxService implements DisposableBean {
         } else {
             componentType = k;
         }
-        if (DeviceState.class.isAssignableFrom(componentType)) {
+        if (DeviceStateMessage.class.isAssignableFrom(componentType)) {
             return "DEVICE_STATE_BATCH_SAVE";
-        } else if (DeviceParameter.class.isAssignableFrom(componentType)) {
+        } else if (DeviceParameterMessage.class.isAssignableFrom(componentType)) {
             return "DEVICE_PARAMETER_BATCH_SAVE";
-        } else if (DeviceProduce.class.isAssignableFrom(componentType)) {
+        } else if (DeviceProduceMessage.class.isAssignableFrom(componentType)) {
             return "DEVICE_PRODUCE_BATCH_SAVE";
         } else {
             throw new InvalidArgsException("Unsupported types cache key");
@@ -77,19 +77,19 @@ public class InfluxService implements DisposableBean {
         } else {
             componentType = k.getClass();
         }
-        if (DeviceState.class.isAssignableFrom(componentType)) {
+        if (DeviceStateMessage.class.isAssignableFrom(componentType)) {
             return this.redisTemplateDeviceState;
-        } else if (DeviceParameter.class.isAssignableFrom(componentType)) {
+        } else if (DeviceParameterMessage.class.isAssignableFrom(componentType)) {
             return this.redisTemplateDeviceParameter;
-        } else if (DeviceProduce.class.isAssignableFrom(componentType)) {
+        } else if (DeviceProduceMessage.class.isAssignableFrom(componentType)) {
             return this.redisTemplateDeviceProduce;
         } else {
             throw new InvalidArgsException("Unsupported types cache");
         }
     };
 
-    public List<DeviceParameter> queryDeviceParameter(final String deviceCode, final String parameterCode,
-                                                      final LocalDateTime startTime, final LocalDateTime stopTime, final Integer limit) {
+    public List<DeviceParameterMessage> queryDeviceParameter(final String deviceCode, final String parameterCode,
+                                                             final LocalDateTime startTime, final LocalDateTime stopTime, final Integer limit) {
         final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s_%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
                 .formatted(
                         property.getInflux2().getMeasurements().getDeviceParameter(),
@@ -99,11 +99,11 @@ public class InfluxService implements DisposableBean {
                         parameterCode,
                         Optional.ofNullable(limit).orElse(10));
         return Optional.ofNullable(getClient()).map(InfluxDBClient::getQueryApi)
-                .map(q -> q.query(query, property.getInflux2().getOrg(), DeviceParameter.class)).orElse(new ArrayList<>());
+                .map(q -> q.query(query, property.getInflux2().getOrg(), DeviceParameterMessage.class)).orElse(new ArrayList<>());
     }
 
-    public List<DeviceParameter> queryDeviceParameter(final String deviceCode, final String parameterCode,
-                                                      final LocalDateTime startTime, final LocalDateTime stopTime) {
+    public List<DeviceParameterMessage> queryDeviceParameter(final String deviceCode, final String parameterCode,
+                                                             final LocalDateTime startTime, final LocalDateTime stopTime) {
         final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s_%s\")"
                 .formatted(
                         property.getInflux2().getMeasurements().getDeviceParameter(),
@@ -112,11 +112,11 @@ public class InfluxService implements DisposableBean {
                         deviceCode,
                         parameterCode);
         return Optional.ofNullable(getClient()).map(InfluxDBClient::getQueryApi)
-                .map(q -> q.query(query, property.getInflux2().getOrg(), DeviceParameter.class)).orElse(new ArrayList<>());
+                .map(q -> q.query(query, property.getInflux2().getOrg(), DeviceParameterMessage.class)).orElse(new ArrayList<>());
     }
 
-    public List<DeviceState> queryDeviceState(final String deviceCode, final LocalDateTime startTime,
-                                              final LocalDateTime stopTime) {
+    public List<DeviceStateMessage> queryDeviceState(final String deviceCode, final LocalDateTime startTime,
+                                                     final LocalDateTime stopTime) {
         final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\")"
                 .formatted(
                         property.getInflux2().getMeasurements().getDeviceState(),
@@ -124,19 +124,19 @@ public class InfluxService implements DisposableBean {
                         stopTime.atOffset(ZoneOffset.ofHours(8)).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
                         deviceCode);
         final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-        final List<DeviceState> collect = new ArrayList<>();
+        final List<DeviceStateMessage> collect = new ArrayList<>();
         if (result.size() == 2) {
             for (int j = 0; j < result.get(0).getRecords().size(); j++) {
                 final FluxRecord first = result.get(0).getRecords().get(j);
                 final FluxRecord second = result.get(1).getRecords().get(j);
-                collect.add(new DeviceState().parse(first.getValues(), second.getValues()));
+                collect.add(new DeviceStateMessage().parse(first.getValues(), second.getValues()));
             }
         }
         return collect;
     }
 
-    public Optional<DeviceState> queryLatestDeviceState(final String deviceCode, final LocalDateTime startTime,
-                                                        final LocalDateTime stopTime) {
+    public Optional<DeviceStateMessage> queryLatestDeviceState(final String deviceCode, final LocalDateTime startTime,
+                                                               final LocalDateTime stopTime) {
         final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
                 .formatted(
                         property.getInflux2().getMeasurements().getDeviceState(),
@@ -145,19 +145,19 @@ public class InfluxService implements DisposableBean {
                         deviceCode,
                         1);
         final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-        final List<DeviceState> collect = new ArrayList<>();
+        final List<DeviceStateMessage> collect = new ArrayList<>();
         if (result.size() == 2) {
             for (int j = 0; j < result.get(0).getRecords().size(); j++) {
                 final FluxRecord first = result.get(0).getRecords().get(j);
                 final FluxRecord second = result.get(1).getRecords().get(j);
-                collect.add(new DeviceState().parse(first.getValues(), second.getValues()));
+                collect.add(new DeviceStateMessage().parse(first.getValues(), second.getValues()));
             }
         }
         return collect.stream().findFirst();
     }
 
-    public List<DeviceProduce> queryDeviceProduce(final String deviceCode, final LocalDateTime startTime,
-                                                  final LocalDateTime stopTime) {
+    public List<DeviceProduceMessage> queryDeviceProduce(final String deviceCode, final LocalDateTime startTime,
+                                                         final LocalDateTime stopTime) {
         final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\")"
                 .formatted(
                         property.getInflux2().getMeasurements().getDeviceProduce(),
@@ -165,19 +165,19 @@ public class InfluxService implements DisposableBean {
                         stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
                         deviceCode);
         final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-        final List<DeviceProduce> collect = new ArrayList<>();
+        final List<DeviceProduceMessage> collect = new ArrayList<>();
         if (result.size() == 2) {
             for (int j = 0; j < result.get(0).getRecords().size(); j++) {
                 final FluxRecord first = result.get(0).getRecords().get(j);
                 final FluxRecord second = result.get(1).getRecords().get(j);
-                collect.add(new DeviceProduce().parse(first.getValues(), second.getValues()));
+                collect.add(new DeviceProduceMessage().parse(first.getValues(), second.getValues()));
             }
         }
         return collect;
     }
 
-    public Optional<DeviceProduce> queryLatestDeviceProduce(final String deviceCode, final LocalDateTime startTime,
-                                                            final LocalDateTime stopTime) {
+    public Optional<DeviceProduceMessage> queryLatestDeviceProduce(final String deviceCode, final LocalDateTime startTime,
+                                                                   final LocalDateTime stopTime) {
         final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
                 .formatted(
                         property.getInflux2().getMeasurements().getDeviceProduce(),
@@ -186,12 +186,12 @@ public class InfluxService implements DisposableBean {
                         deviceCode,
                         1);
         final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-        final List<DeviceProduce> collect = new ArrayList<>();
+        final List<DeviceProduceMessage> collect = new ArrayList<>();
         if (result.size() == 2) {
             for (int j = 0; j < result.get(0).getRecords().size(); j++) {
                 final FluxRecord first = result.get(0).getRecords().get(j);
                 final FluxRecord second = result.get(1).getRecords().get(j);
-                collect.add(new DeviceProduce().parse(first.getValues(), second.getValues()));
+                collect.add(new DeviceProduceMessage().parse(first.getValues(), second.getValues()));
             }
         }
         return collect.stream().findFirst();
@@ -212,9 +212,9 @@ public class InfluxService implements DisposableBean {
                                 1);
                 final List<FluxTable> table = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
                 if (!table.isEmpty()) {
-                    table.get(0).getRecords().forEach(fluxRecord -> {
-                        final DeviceParameter deviceParameter = new DeviceParameter().parse(fluxRecord.getValues());
-                        result.put(deviceParameter.getName(), deviceParameter.getValue());
+                    table.getFirst().getRecords().forEach(fluxRecord -> {
+                        final DeviceParameterMessage deviceParameterMessage = new DeviceParameterMessage().parse(fluxRecord.getValues());
+                        result.put(deviceParameterMessage.getName(), deviceParameterMessage.getValue());
                     });
                 }
             } catch (Throwable throwable) {
@@ -297,14 +297,14 @@ public class InfluxService implements DisposableBean {
 
     public void asyncSaveDeviceParameterBatch() {
         try {
-            redisTemplateDeviceParameter.executePipelined((RedisCallback<DeviceParameter>) redisConnection -> {
+            redisTemplateDeviceParameter.executePipelined((RedisCallback<DeviceParameterMessage>) redisConnection -> {
                 redisConnection.openPipeline();
-                final List<DeviceParameter> range = Optional
+                final List<DeviceParameterMessage> range = Optional
                         .ofNullable(
-                                redisTemplateDeviceParameter.opsForList().range(getCacheKey.apply(DeviceParameter.class), 0, 10000))
+                                redisTemplateDeviceParameter.opsForList().range(getCacheKey.apply(DeviceParameterMessage.class), 0, 10000))
                         .orElse(new ArrayList<>());
-                savePoints(range.toArray(DeviceParameter[]::new));
-                redisTemplateDeviceParameter.opsForList().trim(getCacheKey.apply(DeviceParameter.class), range.size(), -1);
+                savePoints(range.toArray(DeviceParameterMessage[]::new));
+                redisTemplateDeviceParameter.opsForList().trim(getCacheKey.apply(DeviceParameterMessage.class), range.size(), -1);
                 redisConnection.closePipeline();
                 return null;
             });
@@ -316,29 +316,29 @@ public class InfluxService implements DisposableBean {
 
     public void asyncSaveDeviceProduceBatch() {
         try {
-            redisTemplateDeviceProduce.executePipelined((RedisCallback<DeviceProduce>) redisConnection -> {
+            redisTemplateDeviceProduce.executePipelined((RedisCallback<DeviceProduceMessage>) redisConnection -> {
                 redisConnection.openPipeline();
-                final List<DeviceProduce> range = Optional
+                final List<DeviceProduceMessage> range = Optional
                         .ofNullable(
-                                redisTemplateDeviceProduce.opsForList().range(getCacheKey.apply(DeviceProduce.class), 0, 10000))
+                                redisTemplateDeviceProduce.opsForList().range(getCacheKey.apply(DeviceProduceMessage.class), 0, 10000))
                         .orElse(new ArrayList<>());
-                Map<String, List<DeviceProduce>> collect = range.parallelStream()
+                Map<String, List<DeviceProduceMessage>> collect = range.parallelStream()
                         .collect(Collectors.groupingBy(AbstractMessage::getDeviceCode, Collectors.toList()));
                 collect.values().forEach(v -> {
-                    final List<DeviceProduce> value = v.stream().sorted(Comparator.comparing(AbstractMessage::getTime))
+                    final List<DeviceProduceMessage> value = v.stream().sorted(Comparator.comparing(AbstractMessage::getTime))
                             .collect(Collectors.toList());
                     if (!CollectionUtils.isEmpty(value)) {
-                        Optional.of(value).map(it -> it.get(0))
+                        Optional.of(value).map(List::getFirst)
                                 .ifPresent(dp -> queryLatestDeviceProduce(dp.getDeviceCode(), LocalDateTime.now().minusYears(1),
                                         LocalDateTime.now()).ifPresent(
                                         produce -> Optional.ofNullable(produce.getDisplay())
                                                 .map(i -> dp.getDisplay() - i)
                                                 .ifPresentOrElse(dp::setProduce,
                                                         () -> dp.setProduce(dp.getDisplay()))));
-                        savePoints(value.toArray(DeviceProduce[]::new));
+                        savePoints(value.toArray(DeviceProduceMessage[]::new));
                     }
                 });
-                redisTemplateDeviceProduce.opsForList().trim(getCacheKey.apply(DeviceProduce.class), range.size(), -1);
+                redisTemplateDeviceProduce.opsForList().trim(getCacheKey.apply(DeviceProduceMessage.class), range.size(), -1);
                 redisConnection.closePipeline();
                 return null;
             });
@@ -350,18 +350,18 @@ public class InfluxService implements DisposableBean {
 
     public void asyncSaveDeviceStateBatch() {
         try {
-            redisTemplateDeviceState.executePipelined((RedisCallback<DeviceState>) redisConnection -> {
+            redisTemplateDeviceState.executePipelined((RedisCallback<DeviceStateMessage>) redisConnection -> {
                 redisConnection.openPipeline();
-                final List<DeviceState> range = Optional
-                        .ofNullable(redisTemplateDeviceState.opsForList().range(getCacheKey.apply(DeviceState.class), 0, 10000))
+                final List<DeviceStateMessage> range = Optional
+                        .ofNullable(redisTemplateDeviceState.opsForList().range(getCacheKey.apply(DeviceStateMessage.class), 0, 10000))
                         .orElse(new ArrayList<>());
-                final Map<String, List<DeviceState>> map = range.parallelStream()
+                final Map<String, List<DeviceStateMessage>> map = range.parallelStream()
                         .sorted(Comparator.comparing(AbstractMessage::getTime))
-                        .collect(Collectors.groupingBy(DeviceState::getDeviceCode, Collectors.toList()));
+                        .collect(Collectors.groupingBy(DeviceStateMessage::getDeviceCode, Collectors.toList()));
                 map.keySet().parallelStream().forEach(key -> {
-                    final List<DeviceState> value = map.get(key);
+                    final List<DeviceStateMessage> value = map.get(key);
                     if (!CollectionUtils.isEmpty(value)) {
-                        final DeviceState latest = value.parallelStream().reduce(null, (request, request2) -> {
+                        final DeviceStateMessage latest = value.parallelStream().reduce(null, (request, request2) -> {
                             if (ObjectUtils.isEmpty(request)) {
                                 queryLatestDeviceState(request2.getDeviceCode(), LocalDateTime.now().minusYears(1),
                                         LocalDateTime.now())
@@ -374,10 +374,10 @@ public class InfluxService implements DisposableBean {
                             }
                             return request2;
                         });
-                        savePoints(value.toArray(DeviceState[]::new));
+                        savePoints(value.toArray(DeviceStateMessage[]::new));
                     }
                 });
-                redisTemplateDeviceState.opsForList().trim(getCacheKey.apply(DeviceState.class), range.size(), -1);
+                redisTemplateDeviceState.opsForList().trim(getCacheKey.apply(DeviceStateMessage.class), range.size(), -1);
                 redisConnection.closePipeline();
                 return null;
             });
@@ -389,7 +389,7 @@ public class InfluxService implements DisposableBean {
 
     @Override
     public void destroy() {
-        Optional.ofNullable(client).map(AtomicReference::get).ifPresent(InfluxDBClient::close);
+        Optional.of(client).map(AtomicReference::get).ifPresent(InfluxDBClient::close);
     }
 
 }

@@ -13,16 +13,12 @@ import java.util.Objects;
  * @Version: 1.0.0
  */
 @SuppressWarnings("unused")
-public class DeviceConnect extends AbstractMessage {
+public class DeviceConnectMessage extends AbstractMessage {
+    public static final String EVENT = "event";
     private EventType event;
 
     @Override
     public String bucket() {
-//        return SpringHelper.getBean(AcquisitionProperty.class)
-//                .map(AcquisitionProperty::getInflux2)
-//                .map(Influx2Property::getMeasurements)
-//                .map(MeasurementProperty::getDeviceConnect)
-//                .orElse(getClass().getSimpleName());
         return "DeviceConnect";
     }
 
@@ -33,18 +29,18 @@ public class DeviceConnect extends AbstractMessage {
 
     @Override
     public Map<String, String> tags() {
-        return Map.of("deviceCode", getDeviceCode());
+        return Map.of(DEVICE_CODE, getDeviceCode());
     }
 
     @Override
     public Map<String, Object> fields() {
-        return Map.of("event", getEvent());
+        return Map.of(EVENT, getEvent());
     }
 
-    public DeviceConnect() {
+    public DeviceConnectMessage() {
     }
 
-    public DeviceConnect(String deviceCode, Instant time, EventType event) {
+    public DeviceConnectMessage(String deviceCode, Instant time, EventType event) {
         super.setDeviceCode(deviceCode);
         super.setTime(time);
         this.event = event;
@@ -62,7 +58,7 @@ public class DeviceConnect extends AbstractMessage {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (!(o instanceof DeviceConnect that))
+        if (!(o instanceof DeviceConnectMessage that))
             return false;
         if (!super.equals(o))
             return false;
@@ -76,8 +72,10 @@ public class DeviceConnect extends AbstractMessage {
 
     @Override
     public String toString() {
-        return "DeviceConnect{" +
+        return "DeviceConnectMessage{" +
                 "event=" + event +
-                "} " + super.toString();
+                ", deviceCode='" + deviceCode + '\'' +
+                ", time=" + time +
+                '}';
     }
 }

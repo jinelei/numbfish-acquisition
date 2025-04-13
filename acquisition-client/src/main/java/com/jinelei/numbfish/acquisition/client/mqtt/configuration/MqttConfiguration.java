@@ -1,8 +1,8 @@
 package com.jinelei.numbfish.acquisition.client.mqtt.configuration;
 
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnect;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameter;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceState;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnectMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameterMessage;
+import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceStateMessage;
 import com.jinelei.numbfish.acquisition.client.mqtt.handler.ExceptionHandler;
 import com.jinelei.numbfish.acquisition.client.mqtt.splitter.MixinSplitter;
 import com.jinelei.numbfish.acquisition.client.property.AcquisitionProperty;
@@ -11,6 +11,7 @@ import com.jinelei.numbfish.acquisition.client.property.TopicProperty;
 import com.jinelei.numbfish.acquisition.client.service.*;
 import com.jinelei.numbfish.common.exception.InvalidArgsException;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,35 +50,15 @@ public class MqttConfiguration {
     @Bean
     public StandardIntegrationFlow standardIntegrationFlow(
             @Autowired(required = false) MixinSplitter mixinSplitter,
-            @Autowired(required = false) DeviceActivateStateHandler deviceActivateStateHandler,
+            @Autowired(required = false) DeviceActivateHandler deviceActivateHandler,
             @Autowired(required = false) DeviceConnectionHandler deviceConnectionHandler,
-            @Autowired(required = false) DeviceAlarmUpdateHandler deviceAlarmUpdateHandler,
-            @Autowired(required = false) DeviceProduceUpdateHandler deviceProduceUpdateHandler,
+            @Autowired(required = false) DeviceAlarmHandler deviceAlarmHandler,
+            @Autowired(required = false) DeviceProduceHandler deviceProduceHandler,
             @Autowired(required = false) DeviceParameterHandler deviceParameterHandler,
-            @Autowired(required = false) DeviceStateSaveHandler deviceStateSaveHandler
+            @Autowired(required = false) DeviceStateHandler deviceStateHandler
     ) {
         log.info("MqttConfiguration register standardIntegrationFlow");
-        final MqttConnectOptions options = new MqttConnectOptions();
-        options.setServerURIs(new String[]{Optional.ofNullable(this.property.getMqtt().getUrl())
-                .orElseThrow(() -> new RuntimeException("mqtt url is null"))});
-        options.setUserName(Optional.ofNullable(this.property.getMqtt().getUsername())
-                .orElseThrow(() -> new RuntimeException("mqtt username is null")));
-        options.setPassword(Optional.ofNullable(this.property.getMqtt().getPassword())
-                .orElseThrow(() -> new RuntimeException("mqtt password is null"))
-                .toCharArray());
-        options.setCleanSession(true);
-        options.setKeepAliveInterval(60);
-        options.setAutomaticReconnect(true);
-        options.setConnectionTimeout(60);
-        options.setExecutorServiceTimeout(60);
-        final DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
-        factory.setConnectionOptions(options);
-        final MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(this.property.getMqtt().getClientId(), factory);
-        adapter.setCompletionTimeout(60_000);
-        adapter.setSendTimeout(60_000);
-        adapter.setDisconnectCompletionTimeout(30_000);
-        adapter.setConverter(new DefaultPahoMessageConverter());
-        adapter.setQos(1);
+        final MqttPahoMessageDrivenChannelAdapter adapter = getMqttPahoMessageDrivenChannelAdapter();
         Optional.of(this.property)
                 .map(AcquisitionProperty::getMqtt)
                 .map(MqttProperty::getTopics)
@@ -105,29 +86,61 @@ public class MqttConfiguration {
                         Message.class,
                         message -> message.getPayload().getClass().getSimpleName(),
                         spec -> spec
-                                .subFlowMapping(DeviceConnect.class.getSimpleName(),
+                                .subFlowMapping(DeviceConnectMessage.class.getSimpleName(),
                                         definition -> definition
-                                                .wireTap(it -> Optional.ofNullable(deviceActivateStateHandler)
+                                                .wireTap(it -> Optional.ofNullable(deviceActivateHandler)
                                                         .ifPresent(it::handle))
                                                 .wireTap(it -> Optional.ofNullable(deviceConnectionHandler)
                                                         .ifPresent(it::handle))
                                                 .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))
-                                .subFlowMapping(DeviceState.class.getSimpleName(),
+                                .subFlowMapping(DeviceStateMessage.class.getSimpleName(),
                                         definition -> definition
-                                                .wireTap(it -> Optional.ofNullable(deviceStateSaveHandler)
+                                                .wireTap(it -> Optional.ofNullable(deviceStateHandler)
                                                         .ifPresent(it::handle))
                                                 .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))
-                                .subFlowMapping(DeviceParameter.class.getSimpleName(),
+                                .subFlowMapping(DeviceParameterMessage.class.getSimpleName(),
                                         definition -> definition
                                                 .wireTap(it -> Optional.ofNullable(deviceParameterHandler)
                                                         .ifPresent(it::handle))
-                                                .wireTap(it -> Optional.ofNullable(deviceAlarmUpdateHandler)
+                                                .wireTap(it -> Optional.ofNullable(deviceAlarmHandler)
                                                         .ifPresent(it::handle))
-                                                .wireTap(it -> Optional.ofNullable(deviceProduceUpdateHandler)
+                                                .wireTap(it -> Optional.ofNullable(deviceProduceHandler)
                                                         .ifPresent(it::handle))
                                                 .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))
                                 .defaultOutputToParentFlow())
                 .get();
+    }
+
+    @NotNull
+    private MqttPahoMessageDrivenChannelAdapter getMqttPahoMessageDrivenChannelAdapter() {
+        final MqttConnectOptions options = getMqttConnectOptions();
+        final DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
+        factory.setConnectionOptions(options);
+        final MqttPahoMessageDrivenChannelAdapter adapter = new MqttPahoMessageDrivenChannelAdapter(this.property.getMqtt().getClientId(), factory);
+        adapter.setCompletionTimeout(60_000);
+        adapter.setSendTimeout(60_000);
+        adapter.setDisconnectCompletionTimeout(30_000);
+        adapter.setConverter(new DefaultPahoMessageConverter());
+        adapter.setQos(1);
+        return adapter;
+    }
+
+    @NotNull
+    private MqttConnectOptions getMqttConnectOptions() {
+        final MqttConnectOptions options = new MqttConnectOptions();
+        options.setServerURIs(new String[]{Optional.ofNullable(this.property.getMqtt().getUrl())
+                .orElseThrow(() -> new RuntimeException("mqtt url is null"))});
+        options.setUserName(Optional.ofNullable(this.property.getMqtt().getUsername())
+                .orElseThrow(() -> new RuntimeException("mqtt username is null")));
+        options.setPassword(Optional.ofNullable(this.property.getMqtt().getPassword())
+                .orElseThrow(() -> new RuntimeException("mqtt password is null"))
+                .toCharArray());
+        options.setCleanSession(true);
+        options.setKeepAliveInterval(60);
+        options.setAutomaticReconnect(true);
+        options.setConnectionTimeout(60);
+        options.setExecutorServiceTimeout(60);
+        return options;
     }
 
     /**

@@ -14,17 +14,14 @@ import java.util.Optional;
  * @Version: 1.0.0
  */
 @SuppressWarnings("unused")
-public class DeviceState extends AbstractMessage {
+public class DeviceStateMessage extends AbstractMessage {
+    public static final String DURATION = "duration";
+    public static final String STATUS = "status";
     private Long duration;
     private RunningState state;
 
     @Override
     public String bucket() {
-//        return SpringHelper.getBean(Property.class)
-//                .map(Property::getInflux2)
-//                .map(Influx2Property::getMeasurements)
-//                .map(MeasurementProperty::getDeviceState)
-//                .orElse(getClass().getSimpleName());
         return "DeviceState";
     }
 
@@ -35,24 +32,24 @@ public class DeviceState extends AbstractMessage {
 
     @Override
     public Map<String, String> tags() {
-        return Map.of("deviceCode", getDeviceCode());
+        return Map.of(DEVICE_CODE, getDeviceCode());
     }
 
     @Override
     public Map<String, Object> fields() {
-        return Map.of("duration", getDuration(), "status", getState().ordinal());
+        return Map.of(DURATION, getDuration(), STATUS, getState().ordinal());
     }
 
     @SafeVarargs
-    public final DeviceState parse(final Map<String, Object>... maps) {
+    public final DeviceStateMessage parse(final Map<String, Object>... maps) {
         for (Map<String, Object> map : maps) {
-            Optional.ofNullable(map.get("deviceCode")).map(Object::toString).ifPresent(this::setDeviceCode);
-            Optional.ofNullable(map.get("_time")).map(Object::toString).map(Instant::parse).ifPresent(this::setTime);
-            Optional.ofNullable(map.get("_field")).map(Object::toString).ifPresent(it -> {
+            Optional.ofNullable(map.get(DEVICE_CODE)).map(Object::toString).ifPresent(this::setDeviceCode);
+            Optional.ofNullable(map.get(TIME)).map(Object::toString).map(Instant::parse).ifPresent(this::setTime);
+            Optional.ofNullable(map.get(FIELD)).map(Object::toString).ifPresent(it -> {
                 switch (it) {
-                    case "status" -> Optional.ofNullable(map.get("_value")).map(Object::toString).map(Long::parseLong)
+                    case STATUS -> Optional.ofNullable(map.get(VALUE)).map(Object::toString).map(Long::parseLong)
                             .map(RunningState::parseFrom).ifPresent(this::setState);
-                    case "duration" -> Optional.ofNullable(map.get("_value")).map(Object::toString).map(Long::parseLong)
+                    case DURATION -> Optional.ofNullable(map.get(VALUE)).map(Object::toString).map(Long::parseLong)
                             .ifPresent(this::setDuration);
                     default -> {
                     }
@@ -62,10 +59,10 @@ public class DeviceState extends AbstractMessage {
         return this;
     }
 
-    public DeviceState() {
+    public DeviceStateMessage() {
     }
 
-    public DeviceState(String deviceCode, Instant time, Long duration, RunningState state) {
+    public DeviceStateMessage(String deviceCode, Instant time, Long duration, RunningState state) {
         super.setDeviceCode(deviceCode);
         super.setTime(time);
         this.duration = duration;
@@ -92,7 +89,7 @@ public class DeviceState extends AbstractMessage {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (!(o instanceof DeviceState that))
+        if (!(o instanceof DeviceStateMessage that))
             return false;
         if (!super.equals(o))
             return false;
@@ -106,9 +103,11 @@ public class DeviceState extends AbstractMessage {
 
     @Override
     public String toString() {
-        return "DeviceState{" +
+        return "DeviceStateMessage{" +
                 "duration=" + duration +
                 ", state=" + state +
-                "} " + super.toString();
+                ", deviceCode='" + deviceCode + '\'' +
+                ", time=" + time +
+                '}';
     }
 }

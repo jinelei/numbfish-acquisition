@@ -12,17 +12,14 @@ import java.util.Optional;
  * @Version: 1.0.0
  */
 @SuppressWarnings("unused")
-public class DeviceProduce extends AbstractMessage {
+public class DeviceProduceMessage extends AbstractMessage {
+    public static final String PRODUCE = "produce";
+    public static final String DISPLAY = "display";
     private Double produce;
     private Double display;
 
     @Override
     public String bucket() {
-//    return SpringHelper.getBean(Property.class)
-//        .map(Property::getInflux2)
-//        .map(Influx2Property::getMeasurements)
-//        .map(MeasurementProperty::getDeviceProduce)
-//        .orElse(getClass().getSimpleName());
         return "DeviceProduce";
     }
 
@@ -33,12 +30,12 @@ public class DeviceProduce extends AbstractMessage {
 
     @Override
     public Map<String, String> tags() {
-        return Map.of("deviceCode", getDeviceCode());
+        return Map.of(DEVICE_CODE, getDeviceCode());
     }
 
     @Override
     public Map<String, Object> fields() {
-        return Map.of("produce", getProduce(), "display", getDisplay());
+        return Map.of(PRODUCE, getProduce(), DISPLAY, getDisplay());
     }
 
     public Double getProduce() {
@@ -57,10 +54,10 @@ public class DeviceProduce extends AbstractMessage {
         this.display = display;
     }
 
-    public DeviceProduce() {
+    public DeviceProduceMessage() {
     }
 
-    public DeviceProduce(String deviceCode, Instant time, Double produce, Double display) {
+    public DeviceProduceMessage(String deviceCode, Instant time, Double produce, Double display) {
         super.setDeviceCode(deviceCode);
         super.setTime(time);
         this.produce = produce;
@@ -71,7 +68,7 @@ public class DeviceProduce extends AbstractMessage {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (!(o instanceof DeviceProduce that))
+        if (!(o instanceof DeviceProduceMessage that))
             return false;
         if (!super.equals(o))
             return false;
@@ -85,24 +82,26 @@ public class DeviceProduce extends AbstractMessage {
 
     @Override
     public String toString() {
-        return "DeviceProduce{" +
+        return "DeviceProduceMessage{" +
                 "produce=" + produce +
                 ", display=" + display +
-                "} " + super.toString();
+                ", deviceCode='" + deviceCode + '\'' +
+                ", time=" + time +
+                '}';
     }
 
     @SafeVarargs
-    public final DeviceProduce parse(final Map<String, Object>... maps) {
+    public final DeviceProduceMessage parse(final Map<String, Object>... maps) {
         for (Map<String, Object> map : maps) {
-            Optional.ofNullable(map.get("deviceCode")).map(Object::toString).ifPresent(this::setDeviceCode);
-            Optional.ofNullable(map.get("_time")).map(Object::toString).map(Instant::parse).ifPresent(this::setTime);
-            Optional.ofNullable(map.get("_field")).map(Object::toString).ifPresent(it -> {
+            Optional.ofNullable(map.get(DEVICE_CODE)).map(Object::toString).ifPresent(this::setDeviceCode);
+            Optional.ofNullable(map.get(TIME)).map(Object::toString).map(Instant::parse).ifPresent(this::setTime);
+            Optional.ofNullable(map.get(FIELD)).map(Object::toString).ifPresent(it -> {
                 switch (it) {
-                    case "produce" ->
-                            Optional.ofNullable(map.get("_value")).map(Object::toString).map(Double::parseDouble)
+                    case PRODUCE ->
+                            Optional.ofNullable(map.get(VALUE)).map(Object::toString).map(Double::parseDouble)
                                     .ifPresent(this::setProduce);
-                    case "display" ->
-                            Optional.ofNullable(map.get("_value")).map(Object::toString).map(Double::parseDouble)
+                    case DISPLAY ->
+                            Optional.ofNullable(map.get(VALUE)).map(Object::toString).map(Double::parseDouble)
                                     .ifPresent(this::setDisplay);
                     default -> {
                     }

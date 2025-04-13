@@ -14,6 +14,11 @@ import java.util.Objects;
  * @Version: 1.0.0
  */
 public abstract class AbstractMessage implements Serializable {
+    public static final String DEVICE_CODE = "deviceCode";
+    public static final String TIME = "_time";
+    public static final String FIELD = "_field";
+    public static final String VALUE = "_value";
+
     @NotNull(message = "设备编码不能为空")
     protected String deviceCode;
     @NotNull(message = "时间不能为空")

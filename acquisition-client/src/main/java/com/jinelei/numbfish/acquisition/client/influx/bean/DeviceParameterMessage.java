@@ -12,17 +12,14 @@ import java.util.Optional;
  * @Version: 1.0.0
  */
 @SuppressWarnings("unused")
-public class DeviceParameter extends AbstractMessage {
+public class DeviceParameterMessage extends AbstractMessage {
+    public static final String NAME = "name";
+    public static final String VALUE1 = "value";
     private String name;
     private Object value;
 
     @Override
     public String bucket() {
-//    return SpringHelper.getBean(Property.class)
-//        .map(Property::getInflux2)
-//        .map(Influx2Property::getMeasurements)
-//        .map(MeasurementProperty::getDeviceParameter)
-//        .orElse(getClass().getSimpleName());
         return "DeviceParameter";
     }
 
@@ -33,21 +30,21 @@ public class DeviceParameter extends AbstractMessage {
 
     @Override
     public Map<String, String> tags() {
-        return Map.of("deviceCode", getDeviceCode(), "name", getName());
+        return Map.of(DEVICE_CODE, getDeviceCode(), NAME, getName());
     }
 
     @Override
     public Map<String, Object> fields() {
-        return Map.of("value", getValue());
+        return Map.of(VALUE1, getValue());
     }
 
     @SafeVarargs
-    public final DeviceParameter parse(final Map<String, Object>... maps) {
+    public final DeviceParameterMessage parse(final Map<String, Object>... maps) {
         for (Map<String, Object> map : maps) {
-            Optional.ofNullable(map.get("deviceCode")).map(Object::toString).ifPresent(this::setDeviceCode);
-            Optional.ofNullable(map.get("_time")).map(Object::toString).map(Instant::parse).ifPresent(this::setTime);
-            Optional.ofNullable(map.get("name")).map(Object::toString).ifPresent(this::setName);
-            Optional.ofNullable(map.get("_value")).ifPresent(this::setValue);
+            Optional.ofNullable(map.get(DEVICE_CODE)).map(Object::toString).ifPresent(this::setDeviceCode);
+            Optional.ofNullable(map.get(TIME)).map(Object::toString).map(Instant::parse).ifPresent(this::setTime);
+            Optional.ofNullable(map.get(NAME)).map(Object::toString).ifPresent(this::setName);
+            Optional.ofNullable(map.get(VALUE)).ifPresent(this::setValue);
         }
         return this;
     }
@@ -68,10 +65,10 @@ public class DeviceParameter extends AbstractMessage {
         this.value = value;
     }
 
-    public DeviceParameter() {
+    public DeviceParameterMessage() {
     }
 
-    public DeviceParameter(String deviceCode, Instant time, String name, Object value) {
+    public DeviceParameterMessage(String deviceCode, Instant time, String name, Object value) {
         super.setDeviceCode(deviceCode);
         super.setTime(time);
         this.name = name;
@@ -82,7 +79,7 @@ public class DeviceParameter extends AbstractMessage {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (!(o instanceof DeviceParameter that))
+        if (!(o instanceof DeviceParameterMessage that))
             return false;
         if (!super.equals(o))
             return false;
@@ -96,9 +93,11 @@ public class DeviceParameter extends AbstractMessage {
 
     @Override
     public String toString() {
-        return "DeviceParameter{" +
+        return "DeviceParameterMessage{" +
                 "name='" + name + '\'' +
                 ", value=" + value +
-                "} " + super.toString();
+                ", deviceCode='" + deviceCode + '\'' +
+                ", time=" + time +
+                '}';
     }
 }
