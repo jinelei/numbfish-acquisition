@@ -31,6 +31,7 @@ public class DeviceProduceUpdateHandler implements MessageHandler {
         try {
             if (message.getPayload() instanceof DeviceParameter dp) {
                 if (Number.class.isAssignableFrom(dp.getValue().getClass())) {
+                    log.info("DeviceProduceUpdateHandler: {}", dp);
 //                    SpringHelper.getBean(InfluxService.class).ifPresent(influxService -> SpringHelper
 //                            .getBean(DeviceService.class).ifPresent(deviceService -> executor.submit(
 //                                    () -> deviceService.findByDeviceCode(dp.getDeviceCode()).ifPresent(device -> {

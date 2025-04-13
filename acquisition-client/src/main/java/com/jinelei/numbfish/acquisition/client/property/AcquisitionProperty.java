@@ -16,8 +16,6 @@ import java.util.Objects;
 @Component
 @ConfigurationProperties(prefix = "numbfish.acquisition")
 public class AcquisitionProperty {
-    @NotNull(message = "存储配置不合法")
-    protected StoreProperty store;
     @NotNull(message = "MQTT配置不合法")
     protected MqttProperty mqtt;
     @NotNull(message = "influx配置不合法")
@@ -28,14 +26,6 @@ public class AcquisitionProperty {
     protected SecurityProperty security;
     @NotNull(message = "缓存配置不合法")
     protected CacheProperty cache;
-
-    public StoreProperty getStore() {
-        return store;
-    }
-
-    public void setStore(StoreProperty store) {
-        this.store = store;
-    }
 
     public MqttProperty getMqtt() {
         return mqtt;
@@ -78,22 +68,21 @@ public class AcquisitionProperty {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        AcquisitionProperty that = (AcquisitionProperty) o;
-        return Objects.equals(store, that.store) && Objects.equals(mqtt, that.mqtt) && Objects.equals(influx2, that.influx2) && Objects.equals(alias, that.alias) && Objects.equals(security, that.security) && Objects.equals(cache, that.cache);
+    public boolean equals(Object object) {
+        if (object == null || getClass() != object.getClass()) return false;
+        AcquisitionProperty that = (AcquisitionProperty) object;
+        return Objects.equals(mqtt, that.mqtt) && Objects.equals(influx2, that.influx2) && Objects.equals(alias, that.alias) && Objects.equals(security, that.security) && Objects.equals(cache, that.cache);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(store, mqtt, influx2, alias, security, cache);
+        return Objects.hash(mqtt, influx2, alias, security, cache);
     }
 
     @Override
     public String toString() {
         return "AcquisitionProperty{" +
-                "store=" + store +
-                ", mqtt=" + mqtt +
+                "mqtt=" + mqtt +
                 ", influx2=" + influx2 +
                 ", alias=" + alias +
                 ", security=" + security +

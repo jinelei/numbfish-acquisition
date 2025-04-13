@@ -30,6 +30,7 @@ public class DeviceStateSaveHandler implements MessageHandler {
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceState ds) {
+                log.debug("saveDeviceRunState: {}", ds);
 //                SpringHelper.getBean(InfluxService.class).ifPresent(
 //                        influxService -> SpringHelper.getBean(DeviceService.class).ifPresent(deviceService -> executor
 //                                .submit(() -> deviceService.findByDeviceCode(ds.getDeviceCode()).ifPresent(device -> {

@@ -1,0 +1,125 @@
+server:
+  port: 9997
+  compression:
+    enabled: true
+    min-response-size: 1KB
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.jinelei.numbfish.device.client.controller
+
+# knife4j的增强配置，不需要增强可以不配
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  # 开启Swagger的Basic认证功能,默认是false
+  basic:
+    enable: true
+    # Basic认证用户名
+    username: numbfish
+    # Basic认证密码
+    password: numbfish
+
+# Logger Config
+logging:
+  level:
+    root: warn
+    com.jinelei: debug
+
+spring:
+  application:
+    name: numbfish-device-service
+  banner:
+    location: banner.txt
+  datasource:
+    url: jdbc:mysql://${HOST:127.0.0.1}:3306/iotgenius?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: iotG@2025
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${HOST:127.0.0.1}
+      port: 6379
+      password: iotG@2025
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1
+          max-idle: 8
+          min-idle: 0
+
+mybatis:
+  mapper-locations: classpath*:mapper/*/*Mapper.xml,classpath*:mapper/*Mapper.xml
+  type-handlers-package: com.jinelei.numbfish.device.client.configuration.handler.type
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+management:
+  influx:
+    metrics:
+      export:
+        enabled: false
+numbfish:
+  authorization:
+    admin:
+      username: admin
+    login:
+      url: /user/login
+    ignore:
+      urls:
+        - /webjars
+        - /doc.html
+        - /user/login
+  acquisition:
+    mqtt:
+      enabled: true
+      url: tcp://${HOST:127.0.0.1}:1883
+      username: spirit_prod_new_u_${random.value}
+      password: ${random.value}
+      clientId: spirit_prod_new_c_${random.value}
+      qos: 1
+      alias:
+        deviceCode: 'deviceCode'
+        deviceState: 'state'
+        timestamp: 'timestamp'
+      topics:
+        mixin:
+          enabled: true
+          name: /dev/mixin
+          qos: 1
+        state:
+          enabled: true
+          name: /dev/state
+          qos: 1
+        parameter:
+          enabled: true
+          name: /dev/msg
+          qos: 1
+        connect:
+          enabled: true
+          name: /dev/conn
+          qos: 1
+    influx2:
+      enabled: true
+      url: http://${HOST:127.0.0.1}:8086
+      org: iotgenius
+      token: 1cTYtXvHh60yBnvut3yJDaaGg4q9GXWBeC8HzSAtrNXl_KR1uKcbzNC4TCkV0QW1i_abASrZpsMASjv31oZoig==
+      bucket: iotgenius
+      measurements:
+        device-parameter: DeviceParameter
+        device-connect: DeviceConnect
+        device-state: DeviceState
+        device-produce: DeviceProduce
+    alias:
+      device-code: deviceCode
+      timestamp: timestamp
+      state: Status
+      produce: produce
+      event: event

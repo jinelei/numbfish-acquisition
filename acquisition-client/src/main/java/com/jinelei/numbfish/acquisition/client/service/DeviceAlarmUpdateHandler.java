@@ -30,6 +30,7 @@ public class DeviceAlarmUpdateHandler implements MessageHandler {
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceParameter dp) {
+                log.info("DeviceAlarmUpdateHandler: {}", dp);
 //                SpringHelper.getBean(InfluxService.class).ifPresent(influxService -> SpringHelper
 //                        .getBean(DeviceService.class)
 //                        .ifPresent(deviceService -> SpringHelper.getBean(AlarmConfigService.class)

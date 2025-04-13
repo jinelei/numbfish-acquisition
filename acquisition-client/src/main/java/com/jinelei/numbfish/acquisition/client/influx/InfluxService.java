@@ -40,7 +40,7 @@ import java.util.stream.Stream;
  */
 @SuppressWarnings("unused")
 @Service
-@ConditionalOnProperty(value = "app.influx2.enabled", havingValue = "true")
+@ConditionalOnProperty(value = "numbfish.acquisition.influx2.enabled", havingValue = "true")
 public class InfluxService implements DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(InfluxService.class);
     private AcquisitionProperty property;

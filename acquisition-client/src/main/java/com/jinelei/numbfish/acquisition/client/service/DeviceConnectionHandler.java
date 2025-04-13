@@ -23,6 +23,7 @@ public class DeviceConnectionHandler implements MessageHandler {
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceConnect dc) {
+                log.debug("Write deviceConnect success: {}", message);
 //                SpringHelper.getBean(InfluxService.class)
 //                        .ifPresent(influxService -> SpringHelper.getBean(DeviceService.class)
 //                                .ifPresent(deviceService -> deviceService.findByDeviceCode(dc.getDeviceCode())

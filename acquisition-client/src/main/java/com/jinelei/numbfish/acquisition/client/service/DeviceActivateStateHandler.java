@@ -30,6 +30,7 @@ public class DeviceActivateStateHandler implements MessageHandler {
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceConnect dc) {
+                log.debug("updateDeviceActiveState: {}", dc);
             }
         } catch (Throwable throwable) {
             log.error("updateDeviceActiveState failure: {}", throwable.getMessage());

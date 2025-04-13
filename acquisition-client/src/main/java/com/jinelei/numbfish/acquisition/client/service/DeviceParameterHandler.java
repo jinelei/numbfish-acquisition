@@ -23,6 +23,7 @@ public class DeviceParameterHandler implements MessageHandler {
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceParameter dp) {
+                log.debug("saveDeviceParameter: {}", dp);
 //                SpringHelper.getBean(InfluxService.class)
 //                        .ifPresent(influxService -> SpringHelper.getBean(DeviceService.class)
 //                                .ifPresent(deviceService -> deviceService.findByDeviceCode(dp.getDeviceCode())

@@ -35,7 +35,7 @@ import java.util.Optional;
  */
 @SuppressWarnings("unused")
 @Configuration
-@ConditionalOnProperty(name = "numbfish.acquisition.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "numbfish.acquisition.mqtt.enabled", havingValue = "true")
 public class MqttConfiguration {
     private static final Logger log = LoggerFactory.getLogger(MqttConfiguration.class);
     private final AcquisitionProperty property;
