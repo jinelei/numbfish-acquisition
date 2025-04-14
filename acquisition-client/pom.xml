@@ -63,6 +63,17 @@
         </dependency>
 
         <dependency>
+            <groupId>com.jinelei.numbfish</groupId>
+            <artifactId>auth-api</artifactId>
+            <version>${numbfish-auth-api.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>${mysql-connector-j.version}</version>

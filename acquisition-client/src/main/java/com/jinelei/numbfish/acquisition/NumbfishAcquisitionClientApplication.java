@@ -1,19 +1,20 @@
 package com.jinelei.numbfish.acquisition;
 
+import com.jinelei.numbfish.auth.configuration.annotation.EnableFeignAuthorization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 @SpringBootApplication(scanBasePackageClasses = {NumbfishAcquisitionClientApplication.class})
-@Import(SecurityAutoConfiguration.class)
+@EnableFeignAuthorization
+@EnableFeignClients(basePackages = "com.jinelei.numbfish")
 public class NumbfishAcquisitionClientApplication {
     private static final Logger log = LoggerFactory.getLogger(NumbfishAcquisitionClientApplication.class);
 
