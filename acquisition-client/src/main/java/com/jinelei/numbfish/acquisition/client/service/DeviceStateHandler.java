@@ -1,7 +1,7 @@
 package com.jinelei.numbfish.acquisition.client.service;
 
-import com.jinelei.numbfish.acquisition.client.influx.InfluxService;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceStateMessage;
+import com.jinelei.numbfish.acquisition.influx.InfluxService;
+import com.jinelei.numbfish.acquisition.influx.bean.DeviceStateMessage;
 import com.jinelei.numbfish.common.exception.InternalException;
 import com.jinelei.numbfish.common.view.BaseView;
 import com.jinelei.numbfish.device.api.DeviceApi;

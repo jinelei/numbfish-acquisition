@@ -1,14 +1,14 @@
 package com.jinelei.numbfish.acquisition.client.mqtt.configuration;
 
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnectMessage;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceParameterMessage;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceStateMessage;
 import com.jinelei.numbfish.acquisition.client.mqtt.handler.ExceptionHandler;
 import com.jinelei.numbfish.acquisition.client.mqtt.splitter.MixinSplitter;
-import com.jinelei.numbfish.acquisition.client.property.AcquisitionProperty;
-import com.jinelei.numbfish.acquisition.client.property.MqttProperty;
-import com.jinelei.numbfish.acquisition.client.property.TopicProperty;
 import com.jinelei.numbfish.acquisition.client.service.*;
+import com.jinelei.numbfish.acquisition.influx.bean.DeviceConnectMessage;
+import com.jinelei.numbfish.acquisition.influx.bean.DeviceParameterMessage;
+import com.jinelei.numbfish.acquisition.influx.bean.DeviceStateMessage;
+import com.jinelei.numbfish.acquisition.property.AcquisitionProperty;
+import com.jinelei.numbfish.acquisition.property.MqttProperty;
+import com.jinelei.numbfish.acquisition.property.TopicProperty;
 import com.jinelei.numbfish.common.exception.InvalidArgsException;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.jetbrains.annotations.NotNull;

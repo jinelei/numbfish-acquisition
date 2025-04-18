@@ -1,7 +1,7 @@
 package com.jinelei.numbfish.acquisition.client.service;
 
-import com.jinelei.numbfish.acquisition.client.influx.InfluxService;
-import com.jinelei.numbfish.acquisition.client.influx.bean.DeviceConnectMessage;
+import com.jinelei.numbfish.acquisition.influx.InfluxService;
+import com.jinelei.numbfish.acquisition.influx.bean.DeviceConnectMessage;
 import com.jinelei.numbfish.common.exception.InternalException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
