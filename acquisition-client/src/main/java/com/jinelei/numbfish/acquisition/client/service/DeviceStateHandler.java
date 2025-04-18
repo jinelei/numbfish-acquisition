@@ -51,8 +51,8 @@ public class DeviceStateHandler implements MessageHandler, InitializingBean {
             if (message.getPayload() instanceof DeviceStateMessage ds) {
                 Optional.ofNullable(deviceApi).ifPresent(api -> {
                     DeviceRunningStateUpdateRequest request = new DeviceRunningStateUpdateRequest();
-                    request.setDeviceId(ds.getDeviceCode());
-                    request.setState(ds.getState());
+                    request.setDeviceCode(ds.getDeviceCode());
+                    request.setRunningState(ds.getState());
                     request.setTimestamp(LocalDateTime.ofInstant(ds.getTime(), ZoneId.systemDefault()));
                     BaseView<Void> result = api.updateRunningState(request);
                     log.debug("updateRunningState success: {}", result);
