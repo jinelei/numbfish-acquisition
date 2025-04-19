@@ -50,7 +50,6 @@ public class MqttConfiguration {
     @Bean
     public StandardIntegrationFlow standardIntegrationFlow(
             @Autowired(required = false) MixinSplitter mixinSplitter,
-            @Autowired(required = false) DeviceActivateHandler deviceActivateHandler,
             @Autowired(required = false) DeviceConnectionHandler deviceConnectionHandler,
             @Autowired(required = false) DeviceAlarmHandler deviceAlarmHandler,
             @Autowired(required = false) DeviceProduceHandler deviceProduceHandler,
@@ -88,8 +87,6 @@ public class MqttConfiguration {
                         spec -> spec
                                 .subFlowMapping(DeviceConnectMessage.class.getSimpleName(),
                                         definition -> definition
-                                                .wireTap(it -> Optional.ofNullable(deviceActivateHandler)
-                                                        .ifPresent(it::handle))
                                                 .wireTap(it -> Optional.ofNullable(deviceConnectionHandler)
                                                         .ifPresent(it::handle))
                                                 .channel(IntegrationContextUtils.NULL_CHANNEL_BEAN_NAME))

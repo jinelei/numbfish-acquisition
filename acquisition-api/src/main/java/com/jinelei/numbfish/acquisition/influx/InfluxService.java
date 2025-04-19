@@ -7,11 +7,10 @@ import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
-import com.jinelei.numbfish.acquisition.influx.bean.AbstractMessage;
-import com.jinelei.numbfish.acquisition.influx.bean.DeviceParameterMessage;
-import com.jinelei.numbfish.acquisition.influx.bean.DeviceProduceMessage;
-import com.jinelei.numbfish.acquisition.influx.bean.DeviceStateMessage;
+import com.jinelei.numbfish.acquisition.influx.bean.*;
 import com.jinelei.numbfish.acquisition.property.AcquisitionProperty;
+import com.jinelei.numbfish.acquisition.property.Influx2Property;
+import com.jinelei.numbfish.acquisition.property.MeasurementProperty;
 import com.jinelei.numbfish.common.exception.InvalidArgsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +27,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @Author: jinelei
@@ -42,87 +40,118 @@ import java.util.stream.Stream;
 @ConditionalOnProperty(value = "numbfish.acquisition.influx2.enabled", havingValue = "true")
 public class InfluxService implements InitializingBean, DisposableBean {
     private static final Logger log = LoggerFactory.getLogger(InfluxService.class);
-    private AcquisitionProperty property;
-    private RedisTemplate<String, DeviceStateMessage> redisTemplateDeviceState;
-    private RedisTemplate<String, DeviceParameterMessage> redisTemplateDeviceParameter;
-    private RedisTemplate<String, DeviceProduceMessage> redisTemplateDeviceProduce;
+    public static final String DEVICE_STATE_BATCH_SAVE = "DEVICE_STATE_BATCH_SAVE";
+    public static final String DEVICE_PARAMETER_BATCH_SAVE = "DEVICE_PARAMETER_BATCH_SAVE";
+    public static final String DEVICE_PRODUCE_BATCH_SAVE = "DEVICE_PRODUCE_BATCH_SAVE";
+    private final Supplier<String> supplierUrl;
+    private final Supplier<String> supplierToken;
+    private final Supplier<String> supplierOrganization;
+    private final Supplier<String> supplierDeviceParameterMeasurement;
+    private final Supplier<String> supplierDeviceStateMeasurement;
+    private final Supplier<String> supplierDeviceProduceMeasurement;
+    private final RedisTemplate<String, DeviceStateMessage> redisTemplateDeviceState;
+    private final RedisTemplate<String, DeviceParameterMessage> redisTemplateDeviceParameter;
+    private final RedisTemplate<String, DeviceProduceMessage> redisTemplateDeviceProduce;
     private final AtomicReference<InfluxDBClient> client = new AtomicReference<>();
-    private final Function<Class<?>, String> getCacheKey = k -> {
-        Class<?> componentType;
-        if (ObjectUtils.isEmpty(k)) {
-            throw new InvalidArgsException("The type cannot be empty");
-        } else if (k.isArray()) {
-            componentType = k.getComponentType();
-        } else {
-            componentType = k;
-        }
-        if (DeviceStateMessage.class.isAssignableFrom(componentType)) {
-            return "DEVICE_STATE_BATCH_SAVE";
-        } else if (DeviceParameterMessage.class.isAssignableFrom(componentType)) {
-            return "DEVICE_PARAMETER_BATCH_SAVE";
-        } else if (DeviceProduceMessage.class.isAssignableFrom(componentType)) {
-            return "DEVICE_PRODUCE_BATCH_SAVE";
-        } else {
-            throw new InvalidArgsException("Unsupported types cache key");
-        }
-    };
-    @SuppressWarnings("rawtypes")
-    private final Function<Object, RedisTemplate> getCacheRedis = k -> {
-        Class<?> componentType;
-        if (ObjectUtils.isEmpty(k)) {
-            throw new InvalidArgsException("The type cannot be empty");
-        } else if (k.getClass().isArray()) {
-            componentType = k.getClass().getComponentType();
-        } else {
-            componentType = k.getClass();
-        }
-        if (DeviceStateMessage.class.isAssignableFrom(componentType)) {
-            return this.redisTemplateDeviceState;
-        } else if (DeviceParameterMessage.class.isAssignableFrom(componentType)) {
-            return this.redisTemplateDeviceParameter;
-        } else if (DeviceProduceMessage.class.isAssignableFrom(componentType)) {
-            return this.redisTemplateDeviceProduce;
-        } else {
-            throw new InvalidArgsException("Unsupported types cache");
-        }
-    };
 
-    public List<DeviceParameterMessage> queryDeviceParameter(final String deviceCode, final String parameterCode,
-                                                             final LocalDateTime startTime, final LocalDateTime stopTime, final Integer limit) {
-        final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s_%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
-                .formatted(
-                        property.getInflux2().getMeasurements().getDeviceParameter(),
-                        startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        deviceCode,
-                        parameterCode,
-                        Optional.ofNullable(limit).orElse(10));
-        return Optional.ofNullable(getClient()).map(InfluxDBClient::getQueryApi)
-                .map(q -> q.query(query, property.getInflux2().getOrg(), DeviceParameterMessage.class)).orElse(new ArrayList<>());
+    public InfluxService(final AcquisitionProperty property,
+                         final RedisTemplate<String, DeviceStateMessage> redisTemplateDeviceState,
+                         final RedisTemplate<String, DeviceParameterMessage> redisTemplateDeviceParameter,
+                         final RedisTemplate<String, DeviceProduceMessage> redisTemplateDeviceProduce) {
+        Optional.ofNullable(property).orElseThrow(() -> new InvalidArgsException("The property cannot be empty"));
+        this.supplierUrl = () -> Optional.of(property).map(AcquisitionProperty::getInflux2).map(Influx2Property::getUrl).orElseThrow(() -> new InvalidArgsException("The url cannot be empty"));
+        this.supplierToken = () -> Optional.of(property).map(AcquisitionProperty::getInflux2).map(Influx2Property::getToken).orElseThrow(() -> new InvalidArgsException("The token cannot be empty"));
+        this.supplierOrganization = () -> Optional.of(property).map(AcquisitionProperty::getInflux2).map(Influx2Property::getOrg).orElseThrow(() -> new InvalidArgsException("The organization cannot be empty"));
+        this.supplierDeviceStateMeasurement = () -> Optional.of(property).map(AcquisitionProperty::getInflux2).map(Influx2Property::getMeasurements).map(MeasurementProperty::getDeviceState).orElseThrow(() -> new InvalidArgsException("The device state measurement cannot be empty"));
+        this.supplierDeviceParameterMeasurement = () -> Optional.of(property).map(AcquisitionProperty::getInflux2).map(Influx2Property::getMeasurements).map(MeasurementProperty::getDeviceParameter).orElseThrow(() -> new InvalidArgsException("The device parameter measurement cannot be empty"));
+        this.supplierDeviceProduceMeasurement = () -> Optional.of(property).map(AcquisitionProperty::getInflux2).map(Influx2Property::getMeasurements).map(MeasurementProperty::getDeviceProduce).orElseThrow(() -> new InvalidArgsException("The device produce measurement cannot be empty"));
+        this.redisTemplateDeviceState = redisTemplateDeviceState;
+        this.redisTemplateDeviceParameter = redisTemplateDeviceParameter;
+        this.redisTemplateDeviceProduce = redisTemplateDeviceProduce;
     }
 
-    public List<DeviceParameterMessage> queryDeviceParameter(final String deviceCode, final String parameterCode,
-                                                             final LocalDateTime startTime, final LocalDateTime stopTime) {
-        final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s_%s\")"
-                .formatted(
-                        property.getInflux2().getMeasurements().getDeviceParameter(),
-                        startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        deviceCode,
-                        parameterCode);
-        return Optional.ofNullable(getClient()).map(InfluxDBClient::getQueryApi)
-                .map(q -> q.query(query, property.getInflux2().getOrg(), DeviceParameterMessage.class)).orElse(new ArrayList<>());
+    /**
+     * 获取客户端
+     *
+     * @return 客户端
+     */
+    public InfluxDBClient getClient() {
+        client.compareAndSet(null, InfluxDBClientFactory.create(supplierUrl.get(), supplierToken.get().toCharArray()));
+        return client.get();
     }
 
-    public List<DeviceStateMessage> queryDeviceState(final String deviceCode, final LocalDateTime startTime,
-                                                     final LocalDateTime stopTime) {
-        final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\")"
-                .formatted(
-                        property.getInflux2().getMeasurements().getDeviceState(),
-                        startTime.atOffset(ZoneOffset.ofHours(8)).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        stopTime.atOffset(ZoneOffset.ofHours(8)).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        deviceCode);
-        final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
+    /**
+     * 查询设备状态
+     *
+     * @param deviceCode    设备编码
+     * @param parameterCode 参数编码
+     * @param startTime     开始时间
+     * @param stopTime      结束时间
+     * @param limit         条数
+     * @return 查询结果
+     */
+    public List<DeviceParameterMessage> queryDeviceParameter(String deviceCode, String parameterCode, LocalDateTime startTime, LocalDateTime stopTime, Integer limit) {
+        final StringBuilder buffer = new StringBuilder();
+        buffer.append("from(bucket: \"");
+        buffer.append(supplierDeviceParameterMeasurement.get());
+        buffer.append("\") ");
+        if (Optional.ofNullable(startTime).isPresent() && Optional.ofNullable(stopTime).isPresent()) {
+            buffer.append("|> range(");
+            buffer.append("start: ");
+            buffer.append(startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(", ");
+            buffer.append("stop: ");
+            buffer.append(stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(") ");
+        }
+        buffer.append("|> filter(fn: (r) => r[\"_measurement\"] == \"");
+        buffer.append(deviceCode);
+        buffer.append("_");
+        buffer.append(parameterCode);
+        buffer.append("\") ");
+        buffer.append("|> sort(columns: [\"_time\"], desc: true) ");
+        if (Optional.ofNullable(limit).isPresent()) {
+            buffer.append(" |> limit(n:");
+            buffer.append(limit);
+            buffer.append(")");
+        }
+        return Optional.ofNullable(getClient()).map(InfluxDBClient::getQueryApi)
+                .map(q -> q.query(buffer.toString(), supplierOrganization.get(), DeviceParameterMessage.class)).orElse(new ArrayList<>());
+    }
+
+    /**
+     * 查询设备状态
+     *
+     * @param deviceCode 设备编码
+     * @param startTime  开始时间
+     * @param stopTime   结束时间
+     * @param limit      条数
+     * @return 查询结果
+     */
+    public List<DeviceStateMessage> queryDeviceState(String deviceCode, LocalDateTime startTime, LocalDateTime stopTime, Integer limit) {
+        final StringBuilder buffer = new StringBuilder();
+        buffer.append("from(bucket: \"");
+        buffer.append(supplierDeviceStateMeasurement.get());
+        buffer.append("\") ");
+        if (Optional.ofNullable(startTime).isPresent() && Optional.ofNullable(stopTime).isPresent()) {
+            buffer.append("|> range(");
+            buffer.append("start: ");
+            buffer.append(startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(", ");
+            buffer.append("stop: ");
+            buffer.append(stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(") ");
+        }
+        buffer.append("|> filter(fn: (r) => r[\"_measurement\"] == \"");
+        buffer.append(deviceCode);
+        buffer.append("\") ");
+        buffer.append("|> sort(columns: [\"_time\"], desc: true) ");
+        if (Optional.ofNullable(limit).isPresent()) {
+            buffer.append(" |> limit(n:");
+            buffer.append(limit);
+            buffer.append(")");
+        }
+        final List<FluxTable> result = getClient().getQueryApi().query(buffer.toString(), supplierOrganization.get());
         final List<DeviceStateMessage> collect = new ArrayList<>();
         if (result.size() == 2) {
             for (int j = 0; j < result.get(0).getRecords().size(); j++) {
@@ -134,36 +163,39 @@ public class InfluxService implements InitializingBean, DisposableBean {
         return collect;
     }
 
-    public Optional<DeviceStateMessage> queryLatestDeviceState(final String deviceCode, final LocalDateTime startTime,
-                                                               final LocalDateTime stopTime) {
-        final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
-                .formatted(
-                        property.getInflux2().getMeasurements().getDeviceState(),
-                        startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        deviceCode,
-                        1);
-        final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-        final List<DeviceStateMessage> collect = new ArrayList<>();
-        if (result.size() == 2) {
-            for (int j = 0; j < result.get(0).getRecords().size(); j++) {
-                final FluxRecord first = result.get(0).getRecords().get(j);
-                final FluxRecord second = result.get(1).getRecords().get(j);
-                collect.add(new DeviceStateMessage().parse(first.getValues(), second.getValues()));
-            }
+    /**
+     * 查询设备产量
+     *
+     * @param deviceCode 设备编码
+     * @param startTime  开始时间
+     * @param stopTime   结束时间
+     * @param limit      条数
+     * @return 查询结果
+     */
+    public List<DeviceProduceMessage> queryDeviceProduce(String deviceCode, LocalDateTime startTime, LocalDateTime stopTime, Integer limit) {
+        final StringBuilder buffer = new StringBuilder();
+        buffer.append("from(bucket: \"");
+        buffer.append(supplierDeviceProduceMeasurement.get());
+        buffer.append("\") ");
+        if (Optional.ofNullable(startTime).isPresent() && Optional.ofNullable(stopTime).isPresent()) {
+            buffer.append("|> range(");
+            buffer.append("start: ");
+            buffer.append(startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(", ");
+            buffer.append("stop: ");
+            buffer.append(stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(") ");
         }
-        return collect.stream().findFirst();
-    }
-
-    public List<DeviceProduceMessage> queryDeviceProduce(final String deviceCode, final LocalDateTime startTime,
-                                                         final LocalDateTime stopTime) {
-        final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\")"
-                .formatted(
-                        property.getInflux2().getMeasurements().getDeviceProduce(),
-                        startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        deviceCode);
-        final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
+        buffer.append("|> filter(fn: (r) => r[\"_measurement\"] == \"");
+        buffer.append(deviceCode);
+        buffer.append("\") ");
+        buffer.append("|> sort(columns: [\"_time\"], desc: true) ");
+        if (Optional.ofNullable(limit).isPresent()) {
+            buffer.append(" |> limit(n:");
+            buffer.append(limit);
+            buffer.append(")");
+        }
+        final List<FluxTable> result = getClient().getQueryApi().query(buffer.toString(), supplierOrganization.get());
         final List<DeviceProduceMessage> collect = new ArrayList<>();
         if (result.size() == 2) {
             for (int j = 0; j < result.get(0).getRecords().size(); j++) {
@@ -175,60 +207,31 @@ public class InfluxService implements InitializingBean, DisposableBean {
         return collect;
     }
 
-    public Optional<DeviceProduceMessage> queryLatestDeviceProduce(final String deviceCode, final LocalDateTime startTime,
-                                                                   final LocalDateTime stopTime) {
-        final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
-                .formatted(
-                        property.getInflux2().getMeasurements().getDeviceProduce(),
-                        startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                        deviceCode,
-                        1);
-        final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-        final List<DeviceProduceMessage> collect = new ArrayList<>();
-        if (result.size() == 2) {
-            for (int j = 0; j < result.get(0).getRecords().size(); j++) {
-                final FluxRecord first = result.get(0).getRecords().get(j);
-                final FluxRecord second = result.get(1).getRecords().get(j);
-                collect.add(new DeviceProduceMessage().parse(first.getValues(), second.getValues()));
-            }
-        }
-        return collect.stream().findFirst();
-    }
-
-    public Map<String, Object> queryLatestDeviceParameters(final String deviceCode, final Set<String> variableNames) {
-        final Map<String, Object> result = new HashMap<>();
-        variableNames.parallelStream().forEach(key -> {
-            try {
-                final String query = "from(bucket: \"%s\") |> range(start: %s, stop: %s) |> filter(fn: (r) => r[\"_measurement\"] == \"%s_%s\") |> sort(columns: [\"_time\"], desc: true) |> limit(n:%d)"
-                        .formatted(
-                                property.getInflux2().getMeasurements().getDeviceParameter(),
-                                LocalDate.now().atTime(LocalTime.MIN).minusDays(7).atOffset(ZoneOffset.UTC)
-                                        .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                                LocalDateTime.now().atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                                deviceCode,
-                                key,
-                                1);
-                final List<FluxTable> table = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
-                if (!table.isEmpty()) {
-                    table.getFirst().getRecords().forEach(fluxRecord -> {
-                        final DeviceParameterMessage deviceParameterMessage = new DeviceParameterMessage().parse(fluxRecord.getValues());
-                        result.put(deviceParameterMessage.getName(), deviceParameterMessage.getValue());
-                    });
-                }
-            } catch (Throwable throwable) {
-                log.error("queryLastDeviceParameters: {}", throwable.getMessage());
-            }
-        });
-        return result;
-    }
-
+    /**
+     * 查询测量点数量
+     *
+     * @param bucket    bucket
+     * @param startTime 开始时间
+     * @param stopTime  结束时间
+     * @return 查询结果
+     */
     public Long queryMeasurementCount(final String bucket, final LocalDateTime startTime, final LocalDateTime stopTime) {
-        String query = String.format("from(bucket: \"%s\") |> range(start: %s, stop: %s) |> group() |> count()",
-                bucket,
-                startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
-        final List<FluxTable> result = getClient().getQueryApi().query(query, property.getInflux2().getOrg());
+        final StringBuilder buffer = new StringBuilder();
+        buffer.append("from(bucket: \"");
+        buffer.append(bucket);
+        buffer.append("\") ");
+        if (Optional.ofNullable(startTime).isPresent() && Optional.ofNullable(stopTime).isPresent()) {
+            buffer.append("|> range(");
+            buffer.append("start: ");
+            buffer.append(startTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(", ");
+            buffer.append("stop: ");
+            buffer.append(stopTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            buffer.append(") ");
+        }
+        buffer.append("|> group() ");
+        buffer.append("|> count()");
+        final List<FluxTable> result = getClient().getQueryApi().query(buffer.toString(), supplierOrganization.get());
         final AtomicLong count = new AtomicLong(0);
         result.forEach(fluxTable -> Optional.ofNullable(fluxTable)
                 .map(FluxTable::getRecords)
@@ -244,66 +247,102 @@ public class InfluxService implements InitializingBean, DisposableBean {
     }
 
     /**
-     * 异步保存测量点
+     * 批量保存设备状态
      *
      * @param messages 消息列表
-     * @param <T>      类型
+     * @param isAsync  是否异步
      */
-    @SuppressWarnings("unchecked")
-    @SafeVarargs
-    public final <T extends AbstractMessage> void savePointsAsync(T... messages) {
-        List<T> list = Arrays.stream(messages).toList();
-        if (CollectionUtils.isEmpty(list)) {
+    public final void saveDeviceStateMessages(List<DeviceStateMessage> messages, Boolean isAsync) {
+        if (Optional.of(messages).map(List::isEmpty).orElse(true)) {
             return;
         }
-        Optional.ofNullable(getCacheRedis.apply(messages))
-                .ifPresent(c -> c.opsForList().rightPushAll(getCacheKey.apply(messages.getClass()), list));
+        if (Optional.ofNullable(isAsync).orElse(false)) {
+            redisTemplateDeviceState.opsForList().rightPushAll(DEVICE_STATE_BATCH_SAVE, messages);
+        } else {
+            final Map<String, List<DeviceStateMessage>> mapping = messages.parallelStream()
+                    .filter(i -> !ObjectUtils.isEmpty(i.bucket())).collect(Collectors.groupingBy(DeviceStateMessage::bucket));
+            mapping.entrySet().parallelStream().filter(e -> !CollectionUtils.isEmpty(e.getValue())).forEach(entry -> {
+                try (WriteApi writeApi = getClient().makeWriteApi()) {
+                    List<Point> collect = entry.getValue().parallelStream().map(ds -> Point.measurement(ds.measurement())
+                            .time(ds.getTime(), WritePrecision.MS)
+                            .addTags(ds.tags())
+                            .addFields(ds.fields())).collect(Collectors.toList());
+                    writeApi.writePoints(entry.getKey(), supplierOrganization.get(), collect);
+                } catch (Throwable throwable) {
+                    log.error("Write DeviceStateMessage batch error: {}, {}", entry, throwable.getMessage());
+                }
+            });
+        }
     }
 
     /**
-     * 保存测量点
+     * 批量保存设备参数
      *
-     * @param messages 测量点
-     * @param <T>      类型
+     * @param messages 消息列表
+     * @param isAsync  是否异步
      */
-    @SafeVarargs
-    public final <T extends AbstractMessage> void savePoints(T... messages) {
-        List<T> list = Stream.of(messages).toList();
-        if (CollectionUtils.isEmpty(list)) {
+    public final void saveDeviceParameterMessages(List<DeviceParameterMessage> messages, Boolean isAsync) {
+        if (Optional.of(messages).map(List::isEmpty).orElse(true)) {
             return;
         }
-        final Map<String, ? extends List<? extends AbstractMessage>> mapping = list.parallelStream()
-                .filter(i -> !ObjectUtils.isEmpty(i.bucket())).collect(Collectors.groupingBy(AbstractMessage::bucket));
-        mapping.entrySet().parallelStream().filter(e -> !CollectionUtils.isEmpty(e.getValue())).forEach(entry -> {
-            try (WriteApi writeApi = getClient().makeWriteApi()) {
-                List<Point> collect = entry.getValue().parallelStream().map(ds -> Point.measurement(ds.measurement())
-                        .time(ds.getTime(), WritePrecision.MS)
-                        .addTags(ds.tags())
-                        .addFields(ds.fields())).collect(Collectors.toList());
-                writeApi.writePoints(entry.getKey(), property.getInflux2().getOrg(), collect);
-            } catch (Throwable throwable) {
-                log.error("Write point batch error: {}, {}", entry, throwable.getMessage());
-            }
-        });
+        if (Optional.ofNullable(isAsync).orElse(false)) {
+            redisTemplateDeviceParameter.opsForList().rightPushAll(DEVICE_PARAMETER_BATCH_SAVE, messages);
+        } else {
+            final Map<String, List<DeviceParameterMessage>> mapping = messages.parallelStream()
+                    .filter(i -> !ObjectUtils.isEmpty(i.bucket())).collect(Collectors.groupingBy(DeviceParameterMessage::bucket));
+            mapping.entrySet().parallelStream().filter(e -> !CollectionUtils.isEmpty(e.getValue())).forEach(entry -> {
+                try (WriteApi writeApi = getClient().makeWriteApi()) {
+                    List<Point> collect = entry.getValue().parallelStream().map(ds -> Point.measurement(ds.measurement())
+                            .time(ds.getTime(), WritePrecision.MS)
+                            .addTags(ds.tags())
+                            .addFields(ds.fields())).collect(Collectors.toList());
+                    writeApi.writePoints(entry.getKey(), supplierOrganization.get(), collect);
+                } catch (Throwable throwable) {
+                    log.error("Write DeviceParameterMessage batch error: {}, {}", entry, throwable.getMessage());
+                }
+            });
+        }
     }
 
-    public InfluxDBClient getClient() {
-        client.compareAndSet(null,
-                InfluxDBClientFactory.create(this.property.getInflux2().getUrl(),
-                        this.property.getInflux2().getToken().toCharArray()));
-        return client.get();
+    /**
+     * 批量保存设备产量
+     *
+     * @param messages 消息列表
+     * @param isAsync  是否异步
+     */
+    public final void saveDeviceProduceMessages(List<DeviceProduceMessage> messages, Boolean isAsync) {
+        if (Optional.ofNullable(isAsync).orElse(false)) {
+            redisTemplateDeviceProduce.opsForList().rightPushAll(DEVICE_PRODUCE_BATCH_SAVE, messages);
+        } else {
+            final Map<String, List<DeviceProduceMessage>> mapping = messages.parallelStream()
+                    .filter(i -> !ObjectUtils.isEmpty(i.bucket())).collect(Collectors.groupingBy(DeviceProduceMessage::bucket));
+            mapping.entrySet().parallelStream().filter(e -> !CollectionUtils.isEmpty(e.getValue())).forEach(entry -> {
+                try (WriteApi writeApi = getClient().makeWriteApi()) {
+                    List<Point> collect = entry.getValue().parallelStream().map(ds -> Point.measurement(ds.measurement())
+                            .time(ds.getTime(), WritePrecision.MS)
+                            .addTags(ds.tags())
+                            .addFields(ds.fields())).collect(Collectors.toList());
+                    writeApi.writePoints(entry.getKey(), supplierOrganization.get(), collect);
+                } catch (Throwable throwable) {
+                    log.error("Write DeviceProduceMessage batch error: {}, {}", entry, throwable.getMessage());
+                }
+            });
+        }
     }
 
-    public void asyncSaveDeviceParameterBatch() {
+    /**
+     * 任务批量保存设备参数
+     */
+    public void taskBatchSaveDeviceParameter() {
         try {
             redisTemplateDeviceParameter.executePipelined((RedisCallback<DeviceParameterMessage>) redisConnection -> {
                 redisConnection.openPipeline();
                 final List<DeviceParameterMessage> range = Optional
                         .ofNullable(
-                                redisTemplateDeviceParameter.opsForList().range(getCacheKey.apply(DeviceParameterMessage.class), 0, 10000))
+                                redisTemplateDeviceParameter.opsForList().range(DEVICE_PARAMETER_BATCH_SAVE, 0, 10000))
                         .orElse(new ArrayList<>());
-                savePoints(range.toArray(DeviceParameterMessage[]::new));
-                redisTemplateDeviceParameter.opsForList().trim(getCacheKey.apply(DeviceParameterMessage.class), range.size(), -1);
+                saveDeviceParameterMessages(range, false);
+                redisTemplateDeviceParameter.opsForList().trim(DEVICE_PARAMETER_BATCH_SAVE, range.size(), -1);
                 redisConnection.closePipeline();
                 return null;
             });
@@ -313,13 +352,16 @@ public class InfluxService implements InitializingBean, DisposableBean {
         }
     }
 
-    public void asyncSaveDeviceProduceBatch() {
+    /**
+     * 任务批量保存设备产量
+     */
+    public void taskBatchSaveDeviceProduce() {
         try {
             redisTemplateDeviceProduce.executePipelined((RedisCallback<DeviceProduceMessage>) redisConnection -> {
                 redisConnection.openPipeline();
                 final List<DeviceProduceMessage> range = Optional
                         .ofNullable(
-                                redisTemplateDeviceProduce.opsForList().range(getCacheKey.apply(DeviceProduceMessage.class), 0, 10000))
+                                redisTemplateDeviceProduce.opsForList().range(DEVICE_PRODUCE_BATCH_SAVE, 0, 10000))
                         .orElse(new ArrayList<>());
                 Map<String, List<DeviceProduceMessage>> collect = range.parallelStream()
                         .collect(Collectors.groupingBy(AbstractMessage::getDeviceCode, Collectors.toList()));
@@ -328,16 +370,16 @@ public class InfluxService implements InitializingBean, DisposableBean {
                             .collect(Collectors.toList());
                     if (!CollectionUtils.isEmpty(value)) {
                         Optional.of(value).map(List::getFirst)
-                                .ifPresent(dp -> queryLatestDeviceProduce(dp.getDeviceCode(), LocalDateTime.now().minusYears(1),
-                                        LocalDateTime.now()).ifPresent(
-                                        produce -> Optional.ofNullable(produce.getDisplay())
-                                                .map(i -> dp.getDisplay() - i)
-                                                .ifPresentOrElse(dp::setProduce,
-                                                        () -> dp.setProduce(dp.getDisplay()))));
-                        savePoints(value.toArray(DeviceProduceMessage[]::new));
+                                .ifPresent(dp -> queryDeviceProduce(dp.getDeviceCode(), LocalDateTime.now().minusYears(1), LocalDateTime.now(), 1)
+                                        .stream()
+                                        .map(DeviceProduceMessage::getDisplay)
+                                        .map(i -> dp.getDisplay() - i)
+                                        .findFirst()
+                                        .ifPresentOrElse(dp::setProduce, () -> dp.setProduce(dp.getDisplay())));
+                        saveDeviceProduceMessages(value, false);
                     }
                 });
-                redisTemplateDeviceProduce.opsForList().trim(getCacheKey.apply(DeviceProduceMessage.class), range.size(), -1);
+                redisTemplateDeviceProduce.opsForList().trim(DEVICE_PRODUCE_BATCH_SAVE, range.size(), -1);
                 redisConnection.closePipeline();
                 return null;
             });
@@ -347,12 +389,15 @@ public class InfluxService implements InitializingBean, DisposableBean {
         }
     }
 
-    public void asyncSaveDeviceStateBatch() {
+    /**
+     * 任务批量保存设备状态
+     */
+    public void taskBatchSaveDeviceState() {
         try {
             redisTemplateDeviceState.executePipelined((RedisCallback<DeviceStateMessage>) redisConnection -> {
                 redisConnection.openPipeline();
                 final List<DeviceStateMessage> range = Optional
-                        .ofNullable(redisTemplateDeviceState.opsForList().range(getCacheKey.apply(DeviceStateMessage.class), 0, 10000))
+                        .ofNullable(redisTemplateDeviceState.opsForList().range(DEVICE_STATE_BATCH_SAVE, 0, 10000))
                         .orElse(new ArrayList<>());
                 final Map<String, List<DeviceStateMessage>> map = range.parallelStream()
                         .sorted(Comparator.comparing(AbstractMessage::getTime))
@@ -362,21 +407,20 @@ public class InfluxService implements InitializingBean, DisposableBean {
                     if (!CollectionUtils.isEmpty(value)) {
                         final DeviceStateMessage latest = value.parallelStream().reduce(null, (request, request2) -> {
                             if (ObjectUtils.isEmpty(request)) {
-                                queryLatestDeviceState(request2.getDeviceCode(), LocalDateTime.now().minusYears(1),
-                                        LocalDateTime.now())
-                                        .flatMap(state -> Optional.ofNullable(state.getTime())
-                                                .map(i -> Duration.between(i, request2.getTime()).toMillis())
-                                                .filter(i -> i >= 0))
-                                        .ifPresent(request2::setDuration);
+                                queryDeviceState(request2.getDeviceCode(), LocalDateTime.now().minusYears(1), LocalDateTime.now(), 1)
+                                        .stream()
+                                        .map(AbstractMessage::getTime)
+                                        .map(i -> Duration.between(i, request2.getTime()).toMillis())
+                                        .forEach(request2::setDuration);
                             } else {
                                 request2.setDuration(Duration.between(request.getTime(), request2.getTime()).toMillis());
                             }
                             return request2;
                         });
-                        savePoints(value.toArray(DeviceStateMessage[]::new));
+                        saveDeviceStateMessages(value, false);
                     }
                 });
-                redisTemplateDeviceState.opsForList().trim(getCacheKey.apply(DeviceStateMessage.class), range.size(), -1);
+                redisTemplateDeviceState.opsForList().trim(DEVICE_STATE_BATCH_SAVE, range.size(), -1);
                 redisConnection.closePipeline();
                 return null;
             });

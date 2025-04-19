@@ -12,6 +12,7 @@ import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -34,7 +35,7 @@ public class DeviceParameterHandler implements MessageHandler, InitializingBean 
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceParameterMessage dp) {
-                influxService.savePointsAsync(dp);
+                influxService.saveDeviceParameterMessages(List.of(dp), false);
                 log.debug("saveDeviceParameter success: {}", dp);
             }
         } catch (Throwable throwable) {

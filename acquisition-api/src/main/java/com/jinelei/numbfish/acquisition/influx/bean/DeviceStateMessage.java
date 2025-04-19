@@ -1,7 +1,6 @@
 package com.jinelei.numbfish.acquisition.influx.bean;
 
 import com.jinelei.numbfish.acquisition.enumeration.RunningState;
-import com.jinelei.numbfish.common.helper.EnumerationHelper;
 
 import java.time.Instant;
 import java.util.Map;
@@ -49,7 +48,7 @@ public class DeviceStateMessage extends AbstractMessage {
             Optional.ofNullable(map.get(FIELD)).map(Object::toString).ifPresent(it -> {
                 switch (it) {
                     case STATUS -> Optional.ofNullable(map.get(VALUE)).map(Object::toString).map(Long::parseLong)
-                            .map(i -> EnumerationHelper.parseFrom(RunningState.class, i)).ifPresent(this::setState);
+                            .map(RunningState::parseFrom).ifPresent(this::setState);
                     case DURATION -> Optional.ofNullable(map.get(VALUE)).map(Object::toString).map(Long::parseLong)
                             .ifPresent(this::setDuration);
                     default -> {

@@ -22,8 +22,8 @@ public class InfluxTaskService implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
-        this.service.scheduleWithFixedDelay(() -> influxService.asyncSaveDeviceParameterBatch(), 13, 5, TimeUnit.SECONDS);
-        this.service.scheduleWithFixedDelay(() -> influxService.asyncSaveDeviceProduceBatch(), 15, 10, TimeUnit.SECONDS);
-        this.service.scheduleWithFixedDelay(() -> influxService.asyncSaveDeviceStateBatch(), 10, 10, TimeUnit.SECONDS);
+        this.service.scheduleWithFixedDelay(() -> influxService.taskBatchSaveDeviceParameter(), 13, 5, TimeUnit.SECONDS);
+        this.service.scheduleWithFixedDelay(() -> influxService.taskBatchSaveDeviceProduce(), 15, 10, TimeUnit.SECONDS);
+        this.service.scheduleWithFixedDelay(() -> influxService.taskBatchSaveDeviceState(), 10, 10, TimeUnit.SECONDS);
     }
 }

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -41,7 +42,7 @@ public class DeviceStateHandler implements MessageHandler, InitializingBean {
     public void handleMessage(@NotNull Message<?> message) throws MessagingException {
         try {
             if (message.getPayload() instanceof DeviceStateMessage ds) {
-                influxService.savePointsAsync(ds);
+                influxService.saveDeviceStateMessages(List.of(ds), false);
                 log.debug("saveDeviceRunState success: {}", ds);
             }
         } catch (Throwable throwable) {
