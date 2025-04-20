@@ -1,4 +1,4 @@
-package com.jinelei.numbfish.acquisition.client.mqtt.handler;
+package com.jinelei.numbfish.acquisition.mqtt.handler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package com.jinelei.numbfish.acquisition.client.mqtt.splitter;
+package com.jinelei.numbfish.acquisition.mqtt.splitter;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;

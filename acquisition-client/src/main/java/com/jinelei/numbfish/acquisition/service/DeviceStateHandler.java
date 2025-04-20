@@ -1,4 +1,4 @@
-package com.jinelei.numbfish.acquisition.client.service;
+package com.jinelei.numbfish.acquisition.service;
 
 import com.jinelei.numbfish.acquisition.influx.InfluxService;
 import com.jinelei.numbfish.acquisition.influx.bean.DeviceStateMessage;
