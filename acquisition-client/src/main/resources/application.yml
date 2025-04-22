@@ -1,5 +1,5 @@
 server:
-  port: 9997
+  port: ${SERVER_PORT:9999}
   compression:
     enabled: true
     min-response-size: 1KB
@@ -15,16 +15,16 @@ springdoc:
 
 # knife4j的增强配置，不需要增强可以不配
 knife4j:
-  enable: true
+  enable: ${KNIFE4J_ENABLED:true}
   setting:
     language: zh_cn
   # 开启Swagger的Basic认证功能,默认是false
   basic:
     enable: true
     # Basic认证用户名
-    username: numbfish
+    username: ${KNIFE4J_USERNAME:numbfish}
     # Basic认证密码
-    password: numbfish
+    password: ${KNIFE4J_PASSWORD:numbfish}
 
 # Logger Config
 logging:
@@ -38,16 +38,16 @@ spring:
   banner:
     location: banner.txt
   datasource:
-    url: jdbc:mysql://${HOST:127.0.0.1}:3306/iotgenius?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: iotG@2025
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_SCHEMA:iotgenius}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:iotG@2025}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
-      host: ${HOST:127.0.0.1}
-      port: 6379
-      password: iotG@2025
-      database: 0
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:iotG@2025}
+      database: ${REDIS_DATABASE:0}
       lettuce:
         pool:
           max-active: 8
@@ -83,7 +83,7 @@ numbfish:
   acquisition:
     mqtt:
       enabled: true
-      url: tcp://${HOST:127.0.0.1}:1883
+      url: tcp://${MQTT_HOST:127.0.0.1}:${MQTT_PORT:1883}
       username: spirit_prod_new_u_${random.value}
       password: ${random.value}
       clientId: spirit_prod_new_c_${random.value}
