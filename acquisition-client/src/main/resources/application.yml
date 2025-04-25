@@ -22,7 +22,7 @@ knife4j:
     language: zh_cn
   # 开启Swagger的Basic认证功能,默认是false
   basic:
-    enable: true
+    enable: ${KNIFE4J_BASIC_ENABLED:true}
     # Basic认证用户名
     username: ${KNIFE4J_USERNAME:numbfish}
     # Basic认证密码
