@@ -1,5 +1,7 @@
 server:
   port: ${SERVER_PORT:9999}
+  servlet:
+    context-path: ${SERVER_CONTEXT:/acquisition}
   compression:
     enabled: true
     min-response-size: 1KB
@@ -11,7 +13,7 @@ springdoc:
   group-configs:
     - group: 'default'
       paths-to-match: '/**'
-      packages-to-scan: com.jinelei.numbfish.device.client.controller
+      packages-to-scan: com.jinelei.numbfish.device.controller
 
 # knife4j的增强配置，不需要增强可以不配
 knife4j:
@@ -30,6 +32,7 @@ knife4j:
 logging:
   level:
     root: warn
+    org.springframework.boot.web.embedded.tomcat: info
     com.jinelei: debug
 
 spring:
