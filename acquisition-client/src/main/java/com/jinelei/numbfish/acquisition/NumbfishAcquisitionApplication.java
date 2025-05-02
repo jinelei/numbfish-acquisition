@@ -1,6 +1,6 @@
 package com.jinelei.numbfish.acquisition;
 
-import com.jinelei.numbfish.auth.configuration.annotation.EnableFeignAuthorization;
+import com.jinelei.numbfish.authorization.configuration.annotation.EnableFeignAuthorization;
 import com.jinelei.numbfish.common.helper.SpringHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
