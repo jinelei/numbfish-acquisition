@@ -13,7 +13,7 @@ springdoc:
   group-configs:
     - group: 'default'
       paths-to-match: '/**'
-      packages-to-scan: com.jinelei.numbfish.device.controller
+      packages-to-scan: com.jinelei.numbfish.equipment.controller
 
 # knife4j的增强配置，不需要增强可以不配
 knife4j:
@@ -60,7 +60,7 @@ spring:
 
 mybatis:
   mapper-locations: classpath*:mapper/*/*Mapper.xml,classpath*:mapper/*Mapper.xml
-  type-handlers-package: com.jinelei.numbfish.device.client.configuration.handler.type
+  type-handlers-package: com.jinelei.numbfish.equipment.client.configuration.handler.type
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

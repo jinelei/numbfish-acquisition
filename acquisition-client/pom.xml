@@ -58,8 +58,8 @@
 
         <dependency>
             <groupId>com.jinelei.numbfish</groupId>
-            <artifactId>device-api</artifactId>
-            <version>${numbfish-device-api.version}</version>
+            <artifactId>equipment-api</artifactId>
+            <version>${numbfish-equipment-api.version}</version>
         </dependency>
 
         <dependency>
