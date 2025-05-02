@@ -53,7 +53,7 @@
         <spring-boot.version>3.4.3</spring-boot.version>
         <springfox-swagger2.version>3.0.0</springfox-swagger2.version>
         <numbfish-common.version>0.0.1</numbfish-common.version>
-        <numbfish-auth-api.version>0.0.1</numbfish-auth-api.version>
+        <numbfish-authorization-api.version>0.0.1</numbfish-authorization-api.version>
         <numbfish-device-api.version>0.0.1</numbfish-device-api.version>
         <springboot-maven-plugin.version>3.4.3</springboot-maven-plugin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>

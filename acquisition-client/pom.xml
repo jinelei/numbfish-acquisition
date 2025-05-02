@@ -64,8 +64,8 @@
 
         <dependency>
             <groupId>com.jinelei.numbfish</groupId>
-            <artifactId>auth-api</artifactId>
-            <version>${numbfish-auth-api.version}</version>
+            <artifactId>authorization-api</artifactId>
+            <version>${numbfish-authorization-api.version}</version>
         </dependency>
 
         <dependency>
